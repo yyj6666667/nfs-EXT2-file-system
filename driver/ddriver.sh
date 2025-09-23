@@ -19,7 +19,7 @@ fi
 cd "$WORK_DIR" || exit
 
 CONFIG_BLOCK_SZ=512
-BLOCK_COUNT=8192
+BLOCK_COUNT=163840
 
 
 function usage(){
