@@ -287,8 +287,6 @@ int sfs_drop_inode(struct sfs_inode * inode) {
 
     int byte_cursor = 0; 
     int bit_cursor  = 0; 
-    int ino_cursor  = 0;
-    boolean is_find = FALSE;
 
     if (inode == sfs_super.root_dentry->inode) {
         return SFS_ERROR_INVAL;
@@ -306,43 +304,21 @@ int sfs_drop_inode(struct sfs_inode * inode) {
             dentry_cursor = dentry_cursor->brother;
             free(dentry_to_free);
         }
-
-        for (byte_cursor = 0; byte_cursor < SFS_BLKS_SZ(sfs_super.map_inode_blks); 
-            byte_cursor++)                            /* 调整inodemap */
-        {
-            for (bit_cursor = 0; bit_cursor < UINT8_BITS; bit_cursor++) {
-                if (ino_cursor == inode->ino) {
-                     sfs_super.map_inode[byte_cursor] &= (uint8_t)(~(0x1 << bit_cursor));
-                     is_find = TRUE;
-                     break;
-                }
-                ino_cursor++;
-            }
-            if (is_find == TRUE) {
-                break;
-            }
-        }
     }
     else if (SFS_IS_REG(inode) || SFS_IS_SYM_LINK(inode)) {
-        for (byte_cursor = 0; byte_cursor < SFS_BLKS_SZ(sfs_super.map_inode_blks); 
-            byte_cursor++)                            /* 调整inodemap */
-        {
-            for (bit_cursor = 0; bit_cursor < UINT8_BITS; bit_cursor++) {
-                if (ino_cursor == inode->ino) {
-                     sfs_super.map_inode[byte_cursor] &= (uint8_t)(~(0x1 << bit_cursor));
-                     is_find = TRUE;
-                     break;
-                }
-                ino_cursor++;
-            }
-            if (is_find == TRUE) {
-                break;
-            }
-        }
         if (inode->data)
             free(inode->data);
-        free(inode);
     }
+
+    
+    byte_cursor = inode->ino / UINT8_BITS;
+    bit_cursor  = inode->ino % UINT8_BITS;
+
+    if (byte_cursor < SFS_BLKS_SZ(sfs_super.map_inode_blks)) {
+        sfs_super.map_inode[byte_cursor] &= (uint8_t)(~(0x1 << bit_cursor));
+    }
+        
+    free(inode);
     return SFS_ERROR_NONE;
 }
 /**
@@ -560,7 +536,7 @@ int sfs_mount(struct custom_options options){
 
         inode_num  =  SFS_DISK_SZ() / ((SFS_DATA_PER_FILE + SFS_INODE_PER_FILE) * SFS_IO_SZ());
 
-        map_inode_blks = SFS_ROUND_UP(SFS_ROUND_UP(inode_num, UINT32_BITS), SFS_IO_SZ()) 
+        map_inode_blks = SFS_ROUND_UP(SFS_ROUND_UP(inode_num, UINT8_BITS) / UINT8_BITS, SFS_IO_SZ()) 
                          / SFS_IO_SZ();
                                                       /* 布局layout */
         sfs_super.max_ino = (inode_num - super_blks - map_inode_blks); 
