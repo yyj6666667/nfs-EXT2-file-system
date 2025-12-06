@@ -7,7 +7,7 @@
 * SECTION: 宏定义
 *******************************************************************************/
 #define OPTION(t, p)        { t, offsetof(struct custom_options, p), 1 }
-
+const int DATABLOCK_PER_INODE  = 6  /* 每个inode指向的数据块个数 */
 /******************************************************************************
 * SECTION: 全局变量
 *******************************************************************************/
@@ -18,7 +18,12 @@ static const struct fuse_opt option_spec[] = {		/* 用于FUSE文件系统解析�
 
 struct custom_options nfs_options;			 /* 全局选项 */
 struct nfs_super super; 
-#define DATABLOCK_PER_INODE 6  /* 每个inode指向的数据块个数 */
+
+//为了方便， 把全局变量单独定义
+
+boolean  is_init;
+struct nfs_inode* root_inode;
+struct nfs_dentry* root_dentry;
 /******************************************************************************
 * SECTION: FUSE操作定义
 *******************************************************************************/
@@ -78,11 +83,62 @@ void* nfs_init(struct fuse_conn_info * conn_info) {
 	/* TODO: 在这里进行挂载 */
 	//拿到总大小，方便分配位图
 	super.fd = ddriver_open(nfs_options.device);
-	int disk_size = 0;
-	ddriver_ioctl(super.fd, IOC_REQ_DEVICE_SIZE, &disk_size);
-	super_init(&super, disk_size / 1024, DATABLOCK_PER_INODE, sizeof(struct nfs_inode));
+	super.sz_io = 512;
+	super.sz_blk = BLOCK_SZ;
+	is_init = 0;
+
+	struct dentry *root_dentry = new_dentry('/', DIR);
+
+	//判断是否是首次挂载
+	struct nfs_super super_disk ;
+	ddriver_read(super.fd, (char*)&super_disk, sizeof(struct nfs_super));
+	if(NFS_MAGIC == super_disk.magic && super_disk.is_mounted == 0) {
+		// reload
+		//为了方便，就不区分定义了
+		memcpy(&super, &super_disk, sizeof(struct nfs_super));
+		super.is_mounted = 1;
+	} else {
+		//first load
+		is_init = 1;
+		int disk_size;
+		ddriver_ioctl(super.fd, IOC_REQ_DEVICE_SIZE, &disk_size);// 太丑了
+		super_init(&super, disk_size / 1024, DATABLOCK_PER_INODE, sizeof(struct nfs_inode));
+		super.magic     = NFS_MAGIC;
+		//写inode-map, datamap
+
+	}
+	
+	//ram 分配，公共部分
+	super.bitmap_data = (uint8_t*) malloc(super.bitmap_data_bnum * BLOCK_SZ);
+	super.bitmap_inode = (uint8_t*) malloc(super.bitmap_inode_bnum * BLOCK_SZ);
+
+	//todo 空间换时间，我们决定把inode table也读进来，大型系统中往往是按需读取
+	//notice seek_offset is 2 * blk_offset
+	ddriver_seek(super.fd, 2 * BLOCK_SZ, 0);
+	int offset_blk_from_bitmap_to_inodetable = super.bitmap_data_bnum +
+											   super.bitmap_inode_bnum +
+											   super.inode_bnum;
+	char* buf = calloc(offset_blk_from_bitmap_to_inodetable, BLOCK_SZ);
+    ddriver_read(super.fd, buf, offset_blk_from_bitmap_to_inodetable * BLOCK_SZ);
+	char* start = buf;
+	memcpy(super.bitmap_inode, buf, super.bitmap_inode_bnum * BLOCK_SZ); //后面有问题
+	start =  buf + super.bitmap_inode_bnum * BLOCK_SZ;
+	memcpy(super.bitmap_data, start, super.bitmap_data_bnum * BLOCK_SZ);
+	start =  start + super.bitmap_data_bnum * BLOCK_SZ;
+
+	printf("\n--------------------------------------------------------------------------------\n\n");
+	//nfs_dump_map();
+	//这里直接拿到root_inode
+	if (is_init) {
+		root_inode = nfs_alloc_inode(root_dentry);
+		nfs_sync_inode(root_inode);  //to finish
+	}  else {
+		root_inode = (nfs_inode*)malloc(sizeof(nfs_inode));
+		memcpy(root_inode, start, sizeof(nfs_inode));
+	}
 	
 	
+
 	return NULL;
 }
 

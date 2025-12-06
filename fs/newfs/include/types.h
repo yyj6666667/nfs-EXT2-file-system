@@ -1,8 +1,17 @@
 #ifndef _TYPES_H_
 #include <assert.h>
+#include <string.h>
 #define _TYPES_H_
 
 #define MAX_NAME_LEN    128     
+
+typedef enum {
+    REG,
+    DIR,
+    SYM_LINK
+} FILE_TYPE;
+
+typedef int boolean;
 /**
  * @param  N:磁盘总逻辑块数
  * @param  k: 每个inode指向的数据块个数
@@ -14,10 +23,14 @@ struct custom_options {
 	const char*        device;
 };
 
-struct nfs_super {
+typedef struct nfs_super {
     uint32_t magic;
     int      fd;
     /* TODO: Define yourself */
+    uint8_t* bitmap_inode;
+    uint8_t* bitmap_data;
+    int     sz_io;
+    int     sz_blk;
     int     disk_size;
     int     is_mounted;
     int     data_bnum; //数据块所占逻辑块块数
@@ -26,27 +39,38 @@ struct nfs_super {
     int     super_bnum;
     int     bitmap_inode_bnum;
     int     bitmap_data_bnum;
-    int     super_offset = 0;
+    int     super_offset;
     int     bitmap_inode_offset;
     int     bitmap_data_offset;
     int     inode_offset;
     int     data_offset;
 
-};
+}nfs_super;
 
-struct nfs_inode {
+typedef struct nfs_inode {
     uint32_t ino;
     /* TODO: Define yourself */
-};
+    int      size;
+    struct nfs_dentry* dentry_self;
+    struct nfs_dentry* dentry_sons;
+    int      dir_count;
 
-struct nfs_dentry {
+    uint8_t* data;
+}nfs_inode;
+
+typedef struct nfs_dentry {
     char     name[MAX_NAME_LEN];
     uint32_t ino;
     /* TODO: Define yourself */
-};
+    struct nfs_dentry* parent;
+    struct nfs_dentry* brother;
+    struct nfs_inode*  inode;
+    FILE_TYPE          ftype;
+} nfs_dentry;
 
 
 void super_init(struct nfs_super* super,int N, int k, int s) {
+    
     super->disk_size = N * 1024;
     super->is_mounted =  1;
     super->super_bnum = 1;
@@ -73,6 +97,17 @@ void super_init(struct nfs_super* super,int N, int k, int s) {
     super->inode_offset = start;
     start += super->inode_bnum * 1024;
     super->data_offset = start;
+}
+
+struct nfs_dentry* new_dentry(char* filename, FILE_TYPE ftype) {
+    struct nfs_dentry* new = (struct nfs_dentry*) malloc(sizeof(struct nfs_dentry));
+    memcpy(new->name, filename, strlen(filename));
+    new->ftype = FILE_TYPE;
+    new->ino   = -1;
+    new->inode = NULL;
+    new->parent = NULL;
+    new->brother = NULL;
+    return new;
 }
 /*
 偏移量(字节)    区域

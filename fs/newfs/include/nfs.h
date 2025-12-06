@@ -14,12 +14,17 @@
 #include "types.h"
 #include "stdint.h"
 
-#define NFS_MAGIC                  /* TODO: Define by yourself */
+#define NFS_MAGIC      0x6969            /* TODO: Define by yourself */
 #define NFS_DEFAULT_PERM    0777   /* 全权限打开 */
-
+#define BLOCK_SZ  1024
+#define IO_SZ	  512
+extern const int DATABLOCK_PER_INODE;
 /******************************************************************************
 * SECTION: nfs.c
 *******************************************************************************/
+extern struct nfs_super super;
+extern struct custom_options nfs_options;	
+
 void* 			   nfs_init(struct fuse_conn_info *);
 void  			   nfs_destroy(void *);
 int   			   nfs_mkdir(const char *, mode_t);

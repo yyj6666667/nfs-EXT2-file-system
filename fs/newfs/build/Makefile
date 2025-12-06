@@ -153,6 +153,30 @@ src/nfs.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/nfs.dir/build.make CMakeFiles/nfs.dir/src/nfs.c.s
 .PHONY : src/nfs.c.s
 
+src/nfs_utils.o: src/nfs_utils.c.o
+.PHONY : src/nfs_utils.o
+
+# target to build an object file
+src/nfs_utils.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/nfs.dir/build.make CMakeFiles/nfs.dir/src/nfs_utils.c.o
+.PHONY : src/nfs_utils.c.o
+
+src/nfs_utils.i: src/nfs_utils.c.i
+.PHONY : src/nfs_utils.i
+
+# target to preprocess a source file
+src/nfs_utils.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/nfs.dir/build.make CMakeFiles/nfs.dir/src/nfs_utils.c.i
+.PHONY : src/nfs_utils.c.i
+
+src/nfs_utils.s: src/nfs_utils.c.s
+.PHONY : src/nfs_utils.s
+
+# target to generate assembly for a file
+src/nfs_utils.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/nfs.dir/build.make CMakeFiles/nfs.dir/src/nfs_utils.c.s
+.PHONY : src/nfs_utils.c.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -165,6 +189,9 @@ help:
 	@echo "... src/nfs.o"
 	@echo "... src/nfs.i"
 	@echo "... src/nfs.s"
+	@echo "... src/nfs_utils.o"
+	@echo "... src/nfs_utils.i"
+	@echo "... src/nfs_utils.s"
 .PHONY : help
 
 

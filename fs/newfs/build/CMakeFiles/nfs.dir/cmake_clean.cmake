@@ -1,6 +1,8 @@
 file(REMOVE_RECURSE
   "CMakeFiles/nfs.dir/src/nfs.c.o"
   "CMakeFiles/nfs.dir/src/nfs.c.o.d"
+  "CMakeFiles/nfs.dir/src/nfs_utils.c.o"
+  "CMakeFiles/nfs.dir/src/nfs_utils.c.o.d"
   "nfs"
   "nfs.pdb"
 )
