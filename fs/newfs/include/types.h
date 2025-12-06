@@ -43,8 +43,12 @@ typedef struct nfs_super {
     int     bitmap_inode_offset;
     int     bitmap_data_offset;
     int     inode_offset;
-    int     data_offset;
-
+    int     data_begin_loc;
+    const int super_begin_loc_in_disk = 0;
+    int bitmap_inode_begin_loc_in_disk;
+    int bitmap_data_begin_loc_in_disk;
+    int inode_begin_loc_in_disk;
+    int data_begin_loc_in_disk;
 }nfs_super;
 
 typedef struct nfs_inode {
@@ -68,6 +72,23 @@ typedef struct nfs_dentry {
     FILE_TYPE          ftype;
 } nfs_dentry;
 
+typedef struct {
+    int magic;
+    int disk_size;
+    int ino_n;
+    int inode_bnum;
+    int bitmap_data_bnum;
+    int bitmap_inode_bnum;
+    int data_bnum;
+    int data_start_offset;
+}nfs_super_d;
+
+typedef struct {
+    int ino;
+    int size;//file's byte size
+    int dir_count;
+    int direct_data[DATABLOCK_PER_INODE];//块号
+}nfs_inode_d;
 
 void super_init(struct nfs_super* super,int N, int k, int s) {
     
@@ -91,12 +112,16 @@ void super_init(struct nfs_super* super,int N, int k, int s) {
     int start = 0;
     start = 1024 * 1;
     super->bitmap_inode_offset = start;
+    super->bitmap_inode_begin_loc_in_disk = start;
     start += super->bitmap_inode_bnum * 1024;
     super->bitmap_data_offset = start;
+    super->bitmap_data_begin_loc_in_disk = start;
     start += super->bitmap_data_bnum * 1024;
     super->inode_offset = start;
+    super->inode_begin_loc_in_disk = start;
     start += super->inode_bnum * 1024;
-    super->data_offset = start;
+    super->data_begin_loc_in_disk = start;
+    super->data_begin_loc = start;
 }
 
 struct nfs_dentry* new_dentry(char* filename, FILE_TYPE ftype) {

@@ -60,8 +60,8 @@ typedef enum sfs_file_type {
 #define SFS_BLKS_SZ(blks)               ((blks) * SFS_IO_SZ())
 #define SFS_ASSIGN_FNAME(psfs_dentry, _fname)\ 
                                         memcpy(psfs_dentry->fname, _fname, strlen(_fname))
-#define SFS_INO_OFS(ino)                (sfs_super.data_offset + (ino) * SFS_BLKS_SZ((\
-                                        SFS_INODE_PER_FILE + SFS_DATA_PER_FILE)))
+#define SFS_INO_OFS(ino)                (sfs_super.data_offset + (ino) * SFS_BLKS_SZ((SFS_INODE_PER_FILE + SFS_DATA_PER_FILE)))
+                                        
 #define SFS_DATA_OFS(ino)               (SFS_INO_OFS(ino) + SFS_BLKS_SZ(SFS_INODE_PER_FILE))
 
 #define SFS_IS_DIR(pinode)              (pinode->dentry->ftype == SFS_DIR)

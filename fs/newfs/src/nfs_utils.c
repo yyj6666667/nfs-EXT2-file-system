@@ -118,24 +118,80 @@ nfs_inode* alloc_inode(nfs_dentry* dentry) {
 }
 
 
-//唉， 还是remove inode / dentry 分开写吧
-void remove_inode(nfs_dentry* dentry) {
-    nfs_inode* tem = dentry->inode;
+//香香了
+void free_inode(nfs_dentry* dentry) {
+    nfs_inode* inode = dentry->inode;
     //检查是否到递归的最后一层    
-    if(tem->dentry_sons != NULL) {
+    if(inode->dentry_sons != NULL) {
         //递归进入子目录
-        nfs_dentry* iter = tem->dentry_sons;
+        nfs_dentry* iter = inode->dentry_sons;
         while (iter != NULL) {
-            remove_inode(iter);
-            iter = iter->brother;
+            nfs_dentry* next = iter->brother;
+            free_inode(iter);
+            iter = next;
         }
     }
     //最后
-    free(tem->data);
-    free(tem);
-    //remove_dentry(tem->dentry_self); 这个很麻烦， 因为要维护串联dentrybrother， 还要维护parent_inode 的 dentry_sons
+    super.bitmap_inode[inode->ino] = 0;
+    for (int i = 0; i < DATABLOCK_PER_INODE; i++) {
+        super.bitmap_data[inode->ino * DATABLOCK_PER_INODE + i] = 0;
+    }
+    remove_dentry(dentry->parent, inode->dentry_self);
+    free(dentry);
+    free(inode->data);
+    free(inode);
     return;
+}
+
+void sync_inode_to_disk(nfs_inode *inode) {
+    nfs_inode_d* buf_tem = (nfs_inode_d*) malloc(sizeof(nfs_inode_d));
+    buf_tem->size = inode->size;
+    buf_tem->ino  = inode->ino;
+    buf_tem->dir_count = inode->dir_count;
+    for (int i = inode->ino * DATABLOCK_PER_INODE, j = 0; 
+        j < DATABLOCK_PER_INODE; j++, i++) {
+            *(buf_tem->direct_data + j) = i;
+        }
+    int loc_in_disk = inode_loc_in_disk(inode);
+    casual_write(loc_in_disk, (char*)buf_tem, sizeof(nfs_inode_d));
+    free(buf_tem);
+
+    //好了，既然本体已经写入，那么开始愉快的递归吧, 我发现有的递归逻辑写在前面，有的写在后面
+    FILE_TYPE type = inode->dentry_self->ftype;
+    if(type == DIR) {
+        nfs_dentry* sons = inode->dentry_sons;
+        do {
+            sync_inode_to_disk(sons->inode); //问题： 如果有data怎么办？
+        } while(sons->brother != NULL);
+    }
+     
+    if(inode->data != NULL){
+        int data_blk_id   = inode->ino * DATABLOCK_PER_INODE;
+        int data_loc_disk = data_loc_in_disk(data_blk_id);
+        casual_write(data_loc_disk, (char*)inode->data, inode->size);
+    }
+}
+
+void sync_bitmap_to_disk(nfs_inode* inode) {
+    //inode_map
     
 }
 
-void remove_dentry()
+
+
+//------------------------------------------/
+//工具函数的工具函数
+//------------------------------------------/
+
+int inode_loc_in_disk(nfs_inode* inode) {
+    int offset_bnum = super.super_bnum + super.bitmap_inode_bnum
+                    + super.bitmap_data_bnum;
+    int offset_1 = offset_bnum * BLOCK_SZ;
+    int bias = (inode->ino) * sizeof(nfs_inode_d);
+    int offset_final = offset_1 + bias;
+    return offset_final;
+}
+
+int data_loc_in_disk(int block_id) {
+    return super.data_begin_loc + block_id * BLOCK_SZ;
+}
