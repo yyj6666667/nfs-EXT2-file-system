@@ -174,7 +174,29 @@ void sync_inode_to_disk(nfs_inode *inode) {
 
 void sync_bitmap_to_disk(nfs_inode* inode) {
     //inode_map
-    
+    int loc = super.bitmap_inode_begin_loc_in_disk + inode->ino / 8;
+    char tem;
+    casual_read(loc, &tem, 1);
+    int resuial = inode->ino % 8;
+    uint8_t mask = 0b1 << (7 - resuial);
+    uint8_t to_be_write = (uint8_t)tem | mask;
+    casual_write(loc, (char*)(&to_be_write), 1);
+
+    //data_map
+    // 为了可读性和代码容易写，牺牲性能了
+    if (inode->data != NULL) {
+        int loc = super.bitmap_data_begin_loc_in_disk ;
+        int start_bits = inode->ino * DATABLOCK_PER_INODE;
+        for (int i = 0; i < DATABLOCK_PER_INODE; i++) {
+            int cur_loc = loc + (start_bits + i) / 8;
+            char tem;
+            casual_read(cur_loc, &tem, 1);
+            int resuial = (start_bits + i) % 8;
+            uint8_t mask = 0b1 << (7 - resuial);
+            tem |= mask;
+            casual_write(cur_loc, &tem, 1);
+        }
+    }
 }
 
 
