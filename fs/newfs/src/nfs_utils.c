@@ -1,7 +1,3 @@
-#include "../include/nfs.h"
-#include <string.h>
-#define  DBG(str)  do{printf("debugINFO: %s\n", str);}while(0)
-
 char* get_fname(const char* path) {
     char tem = '/';
     if (strrchr(path, tem) != NULL) {
@@ -92,9 +88,13 @@ nfs_inode* alloc_inode(nfs_dentry* dentry) {
     boolean is_empty = 0;
     int     ino_cursor = -1;
     for (int i = 0; i < super.inode_num; i++) {
-        if((super.bitmap_inode + i)[0] == 0) {
-            is_empty = 1;
-            ino_cursor = i;
+        int byte_num = i / 8;
+        uint8_t mask = 0b1 << (7 - i % 8);
+        uint8_t tem  = (super.bitmap_inode)[byte_num];
+        if ((tem & mask) != 0) {
+            tem |= mask;
+            (super.bitmap_inode)[byte_num] = tem; //更新bitmap
+            is_empty = 1; //标志位更新
         }
     }
     if (is_empty || ino_cursor < super.inode_num) {
@@ -170,11 +170,14 @@ void sync_inode_to_disk(nfs_inode *inode) {
         int data_loc_disk = data_loc_in_disk(data_blk_id);
         casual_write(data_loc_disk, (char*)inode->data, inode->size);
     }
+
+    //two bitmap
+    sync_bitmap_to_disk(inode);
 }
 
 void sync_bitmap_to_disk(nfs_inode* inode) {
     //inode_map
-    int loc = super.bitmap_inode_begin_loc_in_disk + inode->ino / 8;
+    int loc = super.bitmap_inode_loc_d + inode->ino / 8;
     char tem;
     casual_read(loc, &tem, 1);
     int resuial = inode->ino % 8;
@@ -185,7 +188,7 @@ void sync_bitmap_to_disk(nfs_inode* inode) {
     //data_map
     // 为了可读性和代码容易写，牺牲性能了
     if (inode->data != NULL) {
-        int loc = super.bitmap_data_begin_loc_in_disk ;
+        int loc = super.bitmap_data_loc_d ;
         int start_bits = inode->ino * DATABLOCK_PER_INODE;
         for (int i = 0; i < DATABLOCK_PER_INODE; i++) {
             int cur_loc = loc + (start_bits + i) / 8;
@@ -197,6 +200,75 @@ void sync_bitmap_to_disk(nfs_inode* inode) {
             casual_write(cur_loc, &tem, 1);
         }
     }
+}
+
+void sync_super_to_disk() {
+    casual_write(0, (char*)&super, sizeof(nfs_super)); //我还是想着nfs_super共用就算了
+}
+
+///**
+// * @brief 多功能查找
+// * 1. 如果查找到了，直接返回
+// * 2. 如果没找到， 返回上级目录(inode or dentry?)
+// */
+//nfs_dentry* general_find (const char* path, boolean* is_found, const nfs_dentry* //cur_dentry) {
+//   // if (calc_path_level(path) == 0) {
+//   //     is_found = 1;
+//   //     return (super.root_inode)->dentry_self;
+//   // }
+//    if (strcmp(path, cur_dentry->name)== 0) {
+//        //当前比对上了
+//        is_found = 1;
+//        return cur_dentry;
+//    }
+//    nfs_inode* cur_inode = cur_dentry->inode;
+//    nfs_dentry* iter = cur_inode->dentry_sons;
+//    if (iter == NULL) {
+//        //没有儿子了，而且没比对上
+//        *is_found = 0;
+//        return cur_dentry;
+//    } else {
+//        //有儿子，继续比对儿子
+//        nfs_dentry* prev = iter;
+//        while(iter != NULL) {
+//            
+//            iter = iter->brother;
+//        }
+//    }
+//
+//    
+//}
+//
+
+/**
+ * 抄袭板
+ */
+nfs_dentry* general_find (const char* path, boolean* is_found) {
+    *is_found = 0;
+    if (calc_path_level(path) == 0) {
+        *is_found = 1;
+        return (super.root_inode)->dentry_self;
+    }
+
+    nfs_dentry* very_begin = super.root_inode->dentry_self;
+    char* path_copy = strdup(path);
+    char* token = strtok_r(path_copy, "/");
+
+    while(token != NULL) {
+        nfs_dentry* deeper = find_child_dentry(very_begin, token);
+        if (deeper == NULL) {
+            DBG("往下找不到了");
+            free(path_copy);
+            return very_begin;
+        } else {
+            token = strtok_r(NULL, "/");
+            very_begin = deeper;
+        }
+    }
+    DBG("成功找到");
+    free(path_copy);
+    *is_found = 1;
+    return very_begin;
 }
 
 
@@ -216,4 +288,34 @@ int inode_loc_in_disk(nfs_inode* inode) {
 
 int data_loc_in_disk(int block_id) {
     return super.data_begin_loc + block_id * BLOCK_SZ;
+}
+
+char* split_path_from_left(char* path) {
+    if(strcmp(path, "/") == 0) {
+        return NULL;
+    }
+    int loc = 0;
+    char* cursor = path + 1; 
+    while(*cursor != '/') {
+        loc++;
+        cursor++;
+    }
+    char* split = (char*) malloc(loc * sizeof(char));
+    memcpy(split, path, loc * sizeof(char));
+    return split;
+}
+
+nfs_dentry* find_child_dentry(nfs_dentry* parent, const char* name) {
+    if (parent->dentry_sons == NULL || parent->ftype != DIR) {
+        return NULL;
+    }
+    nfs_dentry* iter = parent->dentry_sons;
+    while(iter != NULL) {
+        if(strcmp(iter->name, name) == 0) {
+            return iter;
+        }
+        iter = iter->brother;
+    }
+    DBG("sorry, we didn't find any");
+    return NULL;
 }

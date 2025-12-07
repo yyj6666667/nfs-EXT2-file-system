@@ -2,6 +2,7 @@
 
 #include "nfs.h"
 #include "types.h"
+#include "nfs_utils.h"
 
 /******************************************************************************
 * SECTION: 宏定义
@@ -24,6 +25,12 @@ struct nfs_super super;
 boolean  is_init;
 struct nfs_inode* root_inode;
 struct nfs_dentry* root_dentry;
+/******************************************************************************
+* SECTION: Macro Function
+*******************************************************************************/
+#define IS_DIR(wawawa)  (wawawa->dentry_self->ftype == DIR)
+#define IS_REG(wawa)    (wawa->dentry_self->ftype == REG)
+#define IS_SYM_LINK(wa) (wa->dentry_self->ftype == SYM_LINK)
 /******************************************************************************
 * SECTION: FUSE操作定义
 *******************************************************************************/
@@ -87,7 +94,7 @@ void* nfs_init(struct fuse_conn_info * conn_info) {
 	super.sz_blk = BLOCK_SZ;
 	is_init = 0;
 
-	struct dentry *root_dentry = new_dentry('/', DIR);
+	struct dentry *root_dentry = new_dentry("/", DIR);
 
 	//判断是否是首次挂载
 	struct nfs_super super_disk ;
@@ -114,17 +121,17 @@ void* nfs_init(struct fuse_conn_info * conn_info) {
 
 	//todo 空间换时间，我们决定把inode table也读进来，大型系统中往往是按需读取
 	//notice seek_offset is 2 * blk_offset
-	ddriver_seek(super.fd, 2 * BLOCK_SZ, 0);
-	int offset_blk_from_bitmap_to_inodetable = super.bitmap_data_bnum +
-											   super.bitmap_inode_bnum +
-											   super.inode_bnum;
-	char* buf = calloc(offset_blk_from_bitmap_to_inodetable, BLOCK_SZ);
-    ddriver_read(super.fd, buf, offset_blk_from_bitmap_to_inodetable * BLOCK_SZ);
-	char* start = buf;
-	memcpy(super.bitmap_inode, buf, super.bitmap_inode_bnum * BLOCK_SZ); //后面有问题
-	start =  buf + super.bitmap_inode_bnum * BLOCK_SZ;
-	memcpy(super.bitmap_data, start, super.bitmap_data_bnum * BLOCK_SZ);
-	start =  start + super.bitmap_data_bnum * BLOCK_SZ;
+	ddriver_seek(super.fd, 0, 0);
+	int total_blks = 1 + super.bitmap_data_bnum +
+					super.bitmap_inode_bnum +
+					super.inode_bnum;
+	char* buf = calloc(total_blks, BLOCK_SZ);
+    ddriver_read(super.fd, buf, total_blks * BLOCK_SZ);
+	//buf 的布局和磁盘是一致的，所以super变量可以复用
+	memcpy(super.bitmap_inode, buf + super.bitmap_inode_loc_d, super.bitmap_inode_bnum * BLOCK_SZ);
+	memcpy(super.bitmap_data,  buf + super.bitmap_data_loc_d,  super.bitmap_data_bnum * BLOCK_SZ);
+	memcpy(super.inode_table,  buf + super.inode_loc_d,        super.inode_bnum * BLOCK_SZ);
+	free(buf);
 
 	printf("\n--------------------------------------------------------------------------------\n\n");
 	//nfs_dump_map();
@@ -134,7 +141,7 @@ void* nfs_init(struct fuse_conn_info * conn_info) {
 		nfs_sync_inode(root_inode);  //to finish
 	}  else {
 		root_inode = (nfs_inode*)malloc(sizeof(nfs_inode));
-		memcpy(root_inode, start, sizeof(nfs_inode));
+		memcpy(root_inode, super., sizeof(nfs_inode));
 	}
 	
 	
@@ -150,14 +157,18 @@ void* nfs_init(struct fuse_conn_info * conn_info) {
  */
 void nfs_destroy(void* p) {
 	/* TODO: 在这里进行卸载 */
-	
+	//oper for safe: last sync
+	sync_inode_to_disk(root_inode); //包含了sync 2 bitmap to disk
+	sync_super_to_disk();
+	super.is_mounted = 0;
+	free_inode(root_inode);
 	ddriver_close(super.fd);
 
 	return;
 }
 
 /**
- * @brief 创建目录
+ * @brief 创建目录,只能往下创建一层
  * 
  * @param path 相对于挂载点的路径
  * @param mode 创建模式（只读？只写？），可忽略
@@ -165,6 +176,22 @@ void nfs_destroy(void* p) {
  */
 int nfs_mkdir(const char* path, mode_t mode) {
 	/* TODO: 解析路径，创建目录 */
+	boolean is_found = 0;
+	nfs_dentry* found = general_find(path, &is_found);
+	if (is_found == 1) {
+		return -1;
+	} else {
+		nfs_inode* parent= found->inode;
+		nfs_dentry* new = (nfs_dentry*) malloc(sizeof(nfs_dentry));
+		//init
+		new->ftype = DIR;
+		new->parent = parent->dentry_self;
+		new->brother = NULL;
+		//to-do
+		insert_dentry(parent, new);
+		alloc_inode(new);
+		//不知道够不够
+	}
 	return 0;
 }
 
@@ -177,6 +204,37 @@ int nfs_mkdir(const char* path, mode_t mode) {
  */
 int nfs_getattr(const char* path, struct stat * nfs_stat) {
 	/* TODO: 解析路径，获取Inode，填充nfs_stat，可参考/fs/simplefs/sfs.c的sfs_getattr()函数实现 */
+	boolean	is_find, is_root;
+	struct sfs_dentry* dentry = general_find(path, &is_find, &is_root);
+	if (is_find == FALSE) {
+		return -1;
+	}
+
+	if (IS_DIR(dentry->inode)) {
+		sfs_stat->st_mode = S_IFDIR | SFS_DEFAULT_PERM;
+		sfs_stat->st_size = dentry->inode->dir_cnt * sizeof(struct sfs_dentry_d);
+	}
+	else if (IS_REG(dentry->inode)) {
+		sfs_stat->st_mode = S_IFREG | SFS_DEFAULT_PERM;
+		sfs_stat->st_size = dentry->inode->size;
+	}
+	else if (IS_SYM_LINK(dentry->inode)) {
+		sfs_stat->st_mode = S_IFLNK | SFS_DEFAULT_PERM;
+		sfs_stat->st_size = dentry->inode->size;
+	}
+
+	sfs_stat->st_nlink = 1;
+	sfs_stat->st_uid 	 = getuid();
+	sfs_stat->st_gid 	 = getgid();
+	sfs_stat->st_atime   = time(NULL);
+	sfs_stat->st_mtime   = time(NULL);
+	sfs_stat->st_blksize = BLOCK_SZ;
+
+	if (is_root) {
+		sfs_stat->st_size	= 0; //烦死了， 这个是已经使用的空间大小， 我又没有维护，要不先写0吧
+		sfs_stat->st_blocks = super.disk_size / BLOCK_SZ;
+		sfs_stat->st_nlink  = 2;		/* !特殊，根目录link数为2 */
+	}
 	return 0;
 }
 

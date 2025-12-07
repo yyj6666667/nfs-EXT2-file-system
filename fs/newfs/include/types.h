@@ -29,6 +29,7 @@ typedef struct nfs_super {
     /* TODO: Define yourself */
     uint8_t* bitmap_inode;
     uint8_t* bitmap_data;
+    uint8_t* inode_table;
     int     sz_io;
     int     sz_blk;
     int     disk_size;
@@ -44,11 +45,11 @@ typedef struct nfs_super {
     int     bitmap_data_offset;
     int     inode_offset;
     int     data_begin_loc;
-    const int super_begin_loc_in_disk = 0;
-    int bitmap_inode_begin_loc_in_disk;
-    int bitmap_data_begin_loc_in_disk;
-    int inode_begin_loc_in_disk;
-    int data_begin_loc_in_disk;
+    const int super_loc_d = 0;// which is super_loc_begin_loc_in_disk
+    int bitmap_inode_loc_d;
+    int bitmap_data_loc_d;
+    int inode_loc_d;
+    int data_loc_d;
 }nfs_super;
 
 typedef struct nfs_inode {
@@ -112,16 +113,20 @@ void super_init(struct nfs_super* super,int N, int k, int s) {
     int start = 0;
     start = 1024 * 1;
     super->bitmap_inode_offset = start;
-    super->bitmap_inode_begin_loc_in_disk = start;
+    super->bitmap_inode_loc_d = start;
     start += super->bitmap_inode_bnum * 1024;
     super->bitmap_data_offset = start;
-    super->bitmap_data_begin_loc_in_disk = start;
+    super->bitmap_data_loc_d = start;
     start += super->bitmap_data_bnum * 1024;
     super->inode_offset = start;
-    super->inode_begin_loc_in_disk = start;
+    super->inode_loc_d = start;
     start += super->inode_bnum * 1024;
-    super->data_begin_loc_in_disk = start;
+    super->data_loc_d = start;
     super->data_begin_loc = start;
+    super.bitmap_inode = malloc(super->bitmap_inode_bnum * BLOCK_SZ);
+    super.bitmap_data  = malloc(super->bitmap_data_bnum * BLOCK_SZ);
+    super.inode_table  = malloc(super->inode_bnum * BLOCK_SZ);
+    return;
 }
 
 struct nfs_dentry* new_dentry(char* filename, FILE_TYPE ftype) {
