@@ -1,3 +1,5 @@
+#
+
 char* get_fname(const char* path) {
     char tem = '/';
     if (strrchr(path, tem) != NULL) {

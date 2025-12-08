@@ -1,9 +1,12 @@
 #ifndef _TYPES_H_
 #include <assert.h>
 #include <string.h>
+#include "nfs.h"
 #define _TYPES_H_
+#define BLOCK_SZ 1024
 
 #define MAX_NAME_LEN    128     
+//extern const int DATABLOCK_PER_INODE;
 
 typedef enum {
     REG,
@@ -17,7 +20,6 @@ typedef int boolean;
  * @param  k: 每个inode指向的数据块个数
  * @param  s: 每个inode所占的字节数
  */
-extern void super_init(struct nfs_super* super,int N, int k, int s);
 
 struct custom_options {
 	const char*        device;
@@ -45,7 +47,7 @@ typedef struct nfs_super {
     int     bitmap_data_offset;
     int     inode_offset;
     int     data_begin_loc;
-    const int super_loc_d = 0;// which is super_loc_begin_loc_in_disk
+    int super_loc_d ;// which is super_loc_begin_loc_in_disk
     int bitmap_inode_loc_d;
     int bitmap_data_loc_d;
     int inode_loc_d;
@@ -123,16 +125,16 @@ void super_init(struct nfs_super* super,int N, int k, int s) {
     start += super->inode_bnum * 1024;
     super->data_loc_d = start;
     super->data_begin_loc = start;
-    super.bitmap_inode = malloc(super->bitmap_inode_bnum * BLOCK_SZ);
-    super.bitmap_data  = malloc(super->bitmap_data_bnum * BLOCK_SZ);
-    super.inode_table  = malloc(super->inode_bnum * BLOCK_SZ);
+    super->bitmap_inode = malloc(super->bitmap_inode_bnum * BLOCK_SZ);
+    super->bitmap_data  = malloc(super->bitmap_data_bnum * BLOCK_SZ);
+    super->inode_table  = malloc(super->inode_bnum * BLOCK_SZ);
     return;
 }
 
 struct nfs_dentry* new_dentry(char* filename, FILE_TYPE ftype) {
     struct nfs_dentry* new = (struct nfs_dentry*) malloc(sizeof(struct nfs_dentry));
     memcpy(new->name, filename, strlen(filename));
-    new->ftype = FILE_TYPE;
+    new->ftype = ftype;
     new->ino   = -1;
     new->inode = NULL;
     new->parent = NULL;

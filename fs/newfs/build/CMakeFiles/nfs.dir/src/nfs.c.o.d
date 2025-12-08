@@ -82,4 +82,8 @@ CMakeFiles/nfs.dir/src/nfs.c.o: \
  /usr/include/x86_64-linux-gnu/bits/errno.h /usr/include/linux/errno.h \
  /usr/include/x86_64-linux-gnu/asm/errno.h \
  /usr/include/asm-generic/errno.h /usr/include/asm-generic/errno-base.h \
- /home/benjamin/home-lab/user-land-filesystem/fs/newfs/./include/types.h
+ /home/benjamin/home-lab/user-land-filesystem/fs/newfs/./include/types.h \
+ /usr/include/assert.h \
+ /home/benjamin/home-lab/user-land-filesystem/fs/newfs/./include/nfs.h \
+ /home/benjamin/home-lab/user-land-filesystem/fs/newfs/./include/nfs_utils.h \
+ /home/benjamin/home-lab/user-land-filesystem/fs/newfs/./include/../include/nfs.h

@@ -2,6 +2,7 @@
 #define _UTILS_H_
 
 #include "../include/nfs.h"
+#include "types.h"
 #include <string.h>
 #define  DBG(str)  do{printf("debugINFO: %s\n", str);}while(0)
 
@@ -17,6 +18,7 @@ void free_inode(nfs_dentry* dentry);
 void sync_inode_to_disk(nfs_inode *inode);
 void sync_bitmap_to_disk(nfs_inode* inode);
 void sync_super_to_disk();
+nfs_dentry* general_find(const char* path, boolean* is_found);
 
 
 #endif /* _UTILS_H_ */

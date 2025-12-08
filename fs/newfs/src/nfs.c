@@ -1,14 +1,14 @@
 #define _XOPEN_SOURCE 700
 
 #include "nfs.h"
-#include "types.h"
 #include "nfs_utils.h"
 
 /******************************************************************************
 * SECTION: 宏定义
 *******************************************************************************/
 #define OPTION(t, p)        { t, offsetof(struct custom_options, p), 1 }
-const int DATABLOCK_PER_INODE  = 6;  /* 每个inode指向的数据块个数 */
+#define BLOCK_SZ  1024
+//const int DATABLOCK_PER_INODE  = 6;  /* 每个inode指向的数据块个数 */
 /******************************************************************************
 * SECTION: 全局变量
 *******************************************************************************/
@@ -73,7 +73,7 @@ static struct fuse_operations operations = {
 │  │  demo_mount()        │ ← .  init 调用这个      │
 │  │  demo_umount()       │ ← . destroy 调用这个   │
 │  │  demo_readdir()      │ ← . readdir 调用这个   │
-│  │  sfs_mkdir()         │ ← .mkdir 调用这个     │
+│  │  nfs_mkdir()         │ ← .mkdir 调用这个     │
 │  └──────────────────────┘                       │
 └──────────────────────────────────────────────────┘
 */
@@ -98,6 +98,8 @@ void* nfs_init(struct fuse_conn_info * conn_info) {
 
 	//判断是否是首次挂载
 	struct nfs_super super_disk ;
+	super.super_loc_d = 0;
+	super_disk.super_loc_d = 0;
 	ddriver_read(super.fd, (char*)&super_disk, sizeof(struct nfs_super));
 	if(NFS_MAGIC == super_disk.magic && super_disk.is_mounted == 0) {
 		// reload
@@ -137,11 +139,13 @@ void* nfs_init(struct fuse_conn_info * conn_info) {
 	//nfs_dump_map();
 	//这里直接拿到root_inode
 	if (is_init) {
-		root_inode = nfs_alloc_inode(root_dentry);
-		nfs_sync_inode(root_inode);  //to finish
+		root_inode = alloc_inode(root_dentry);
+		sync_inode_to_disk(root_inode);  //to finish
+		sync_bitmap_to_disk(root_inode);
 	}  else {
-		root_inode = (nfs_inode*)malloc(sizeof(nfs_inode));
-		memcpy(root_inode, super., sizeof(nfs_inode));
+		//to-do 这里少了一个读取所有信息的逻辑
+		//危险
+		root_inode = alloc_inode(root_dentry);
 	}
 	
 	
@@ -185,7 +189,7 @@ int nfs_mkdir(const char* path, mode_t mode) {
 		nfs_dentry* new_null = NULL;
 		//to-do
 		insert_dentry(parent, new_null, DIR);
-		alloc_inode(new);
+		alloc_inode(new_null);
 		//不知道够不够
 	}
 	return 0;
@@ -199,37 +203,37 @@ int nfs_mkdir(const char* path, mode_t mode) {
  * @return int 0成功，否则返回对应错误号
  */
 int nfs_getattr(const char* path, struct stat * nfs_stat) {
-	/* TODO: 解析路径，获取Inode，填充nfs_stat，可参考/fs/simplefs/sfs.c的sfs_getattr()函数实现 */
+	/* TODO: 解析路径，获取Inode，填充nfs_stat，可参考/fs/simplefs/nfs.c的nfs_getattr()函数实现 */
 	boolean	is_find, is_root;
-	struct sfs_dentry* dentry = general_find(path, &is_find, &is_root);
-	if (is_find == FALSE) {
+	struct nfs_dentry* dentry = general_find(path, &is_find);
+	if (is_find == 0) {
 		return -1;
 	}
 
 	if (IS_DIR(dentry->inode)) {
-		sfs_stat->st_mode = S_IFDIR | SFS_DEFAULT_PERM;
-		sfs_stat->st_size = dentry->inode->dir_cnt * sizeof(struct sfs_dentry_d);
+		nfs_stat->st_mode = S_IFDIR | nfs_DEFAULT_PERM;
+		nfs_stat->st_size = dentry->inode->dir_count * sizeof(struct nfs_dentry_d);
 	}
 	else if (IS_REG(dentry->inode)) {
-		sfs_stat->st_mode = S_IFREG | SFS_DEFAULT_PERM;
-		sfs_stat->st_size = dentry->inode->size;
+		nfs_stat->st_mode = S_IFREG | nfs_DEFAULT_PERM;
+		nfs_stat->st_size = dentry->inode->size;
 	}
 	else if (IS_SYM_LINK(dentry->inode)) {
-		sfs_stat->st_mode = S_IFLNK | SFS_DEFAULT_PERM;
-		sfs_stat->st_size = dentry->inode->size;
+		nfs_stat->st_mode = S_IFLNK | nfs_DEFAULT_PERM;
+		nfs_stat->st_size = dentry->inode->size;
 	}
 
-	sfs_stat->st_nlink = 1;
-	sfs_stat->st_uid 	 = getuid();
-	sfs_stat->st_gid 	 = getgid();
-	sfs_stat->st_atime   = time(NULL);
-	sfs_stat->st_mtime   = time(NULL);
-	sfs_stat->st_blksize = BLOCK_SZ;
+	nfs_stat->st_nlink = 1;
+	nfs_stat->st_uid 	 = getuid();
+	nfs_stat->st_gid 	 = getgid();
+	nfs_stat->st_atime   = time(NULL);
+	nfs_stat->st_mtime   = time(NULL);
+	nfs_stat->st_blksize = BLOCK_SZ;
 
 	if (is_root) {
-		sfs_stat->st_size	= 0; //烦死了， 这个是已经使用的空间大小， 我又没有维护，要不先写0吧
-		sfs_stat->st_blocks = super.disk_size / BLOCK_SZ;
-		sfs_stat->st_nlink  = 2;		/* !特殊，根目录link数为2 */
+		nfs_stat->st_size	= 0; //烦死了， 这个是已经使用的空间大小， 我又没有维护，要不先写0吧
+		nfs_stat->st_blocks = super.disk_size / BLOCK_SZ;
+		nfs_stat->st_nlink  = 2;		/* !特殊，根目录link数为2 */
 	}
 	return 0;
 }
@@ -254,9 +258,9 @@ int nfs_getattr(const char* path, struct stat * nfs_stat) {
  */
 int nfs_readdir(const char * path, void * buf, fuse_fill_dir_t filler, off_t offset,
 			    		 struct fuse_file_info * fi) {
-    /* TODO: 解析路径，获取目录的Inode，并读取目录项，利用filler填充到buf，可参考/fs/simplefs/sfs.c的sfs_readdir()函数实现 */
+    /* TODO: 解析路径，获取目录的Inode，并读取目录项，利用filler填充到buf，可参考/fs/simplefs/nfs.c的nfs_readdir()函数实现 */
 	boolean is_found = 0;
-	nfs_dentry* potential_res = generale_find(path, &is_found);
+	nfs_dentry* potential_res = general_find(path, &is_found);
 	if (is_found == 1 && potential_res != NULL) {
 		/*
 		实际系统中：
@@ -267,7 +271,7 @@ int nfs_readdir(const char * path, void * buf, fuse_fill_dir_t filler, off_t off
 		nfs_inode* parent = potential_res->inode;
 		nfs_dentry* iter = parent->dentry_sons;
 		while(iter != NULL) {
-			filler(buf, iter->fname, NULL, ++offset);
+			filler(buf, iter->name, NULL, ++offset);
 			iter = iter->brother;
 			return 0;
 		}
@@ -300,7 +304,7 @@ int nfs_mknod(const char* path, mode_t mode, dev_t dev) {
 				nfs_dentry* target = NULL;
 				insert_dentry(parent, target, DIR);
 			}
-			case __S_IFINK: {
+			case __S_IFLNK: {
 				nfs_dentry* target = NULL;
 				insert_dentry(parent, target, SYM_LINK);			
 				//写了也没用
