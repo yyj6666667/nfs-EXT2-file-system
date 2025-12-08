@@ -211,15 +211,15 @@ int nfs_getattr(const char* path, struct stat * nfs_stat) {
 	}
 
 	if (IS_DIR(dentry->inode)) {
-		nfs_stat->st_mode = S_IFDIR | nfs_DEFAULT_PERM;
-		nfs_stat->st_size = dentry->inode->dir_count * sizeof(struct nfs_dentry_d);
+		nfs_stat->st_mode = S_IFDIR | NFS_DEFAULT_PERM;
+		nfs_stat->st_size = dentry->inode->dir_count * sizeof( nfs_dentry);
 	}
 	else if (IS_REG(dentry->inode)) {
-		nfs_stat->st_mode = S_IFREG | nfs_DEFAULT_PERM;
+		nfs_stat->st_mode = S_IFREG | NFS_DEFAULT_PERM;
 		nfs_stat->st_size = dentry->inode->size;
 	}
 	else if (IS_SYM_LINK(dentry->inode)) {
-		nfs_stat->st_mode = S_IFLNK | nfs_DEFAULT_PERM;
+		nfs_stat->st_mode = S_IFLNK | NFS_DEFAULT_PERM;
 		nfs_stat->st_size = dentry->inode->size;
 	}
 
