@@ -93,10 +93,6 @@ typedef struct {
     int direct_data[DATABLOCK_PER_INODE];//块号
 }nfs_inode_d;
 
-/* Function declarations */
-void super_init(struct nfs_super* super, int N, int k, int s);
-struct nfs_dentry* new_dentry(char* filename, FILE_TYPE ftype);
-
 /*
 偏移量(字节)    区域
 ─────────────────────────────
