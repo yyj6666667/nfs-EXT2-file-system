@@ -196,7 +196,7 @@ int nfs_mkdir(const char* path, mode_t mode) {
 }
 
 /**
- * @brief 获取文件或目录的属性，该函数非常重要
+ * @brief 获取文件或目录的属性，该函数非常重要,宝宝不喜欢
  * 
  * @param path 相对于挂载点的路径
  * @param nfs_stat 返回状态
@@ -259,7 +259,25 @@ int nfs_getattr(const char* path, struct stat * nfs_stat) {
 int nfs_readdir(const char * path, void * buf, fuse_fill_dir_t filler, off_t offset,
 			    		 struct fuse_file_info * fi) {
     /* TODO: 解析路径，获取目录的Inode，并读取目录项，利用filler填充到buf，可参考/fs/simplefs/sfs.c的sfs_readdir()函数实现 */
-    return 0;
+	boolean is_found = 0;
+	nfs_dentry* potential_res = generale_find(path, &is_found);
+	if (is_found == 1 && potential_res != NULL) {
+		/*
+		实际系统中：
+		filler(buf, ".", NULL, 0);
+		filler(buf, "..", NULL, 0);
+		*/
+		//给出子目录
+		nfs_inode* parent = potential_res->inode;
+		nfs_dentry* iter = parent->dentry_sons;
+		while(iter != NULL) {
+			filler(buf, iter->fname, NULL, ++offset);
+			iter = iter->brother;
+			return 0;
+		}
+	}
+	DBG("坏了， 没有找到");
+    return -1;
 }
 
 /**
@@ -272,6 +290,13 @@ int nfs_readdir(const char * path, void * buf, fuse_fill_dir_t filler, off_t off
  */
 int nfs_mknod(const char* path, mode_t mode, dev_t dev) {
 	/* TODO: 解析路径，并创建相应的文件 */
+	boolean is_found;
+	nfs_dentry* begin = general_find(path, &is_found);
+	if(is_found == 0 && begin != NULL) {
+		nfs_inode* parent = begin->inode;
+		nfs_dentry* new = (nfs_dentry*) malloc(sizeof(nfs_dentry));
+
+	}
 	return 0;
 }
 

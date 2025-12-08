@@ -7,5 +7,7 @@
         "sfs.h": "c",
         "ddriver.h": "c",
         "errno.h": "c"
-    }
+    },
+    "cmake.sourceDirectory": "/home/benjamin/home-lab/user-land-filesystem/fs/newfs",
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
 }
