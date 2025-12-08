@@ -1,12 +1,12 @@
 #ifndef _TYPES_H_
+#define _TYPES_H_
 #include <assert.h>
 #include <string.h>
-#include "nfs.h"
-#define _TYPES_H_
-#define BLOCK_SZ 1024
+#include <stdint.h>
+#include <stdlib.h>
 
-#define MAX_NAME_LEN    128     
-//extern const int DATABLOCK_PER_INODE;
+#define MAX_NAME_LEN    128
+#define DATABLOCK_PER_INODE 6
 
 typedef enum {
     REG,
@@ -93,54 +93,10 @@ typedef struct {
     int direct_data[DATABLOCK_PER_INODE];//块号
 }nfs_inode_d;
 
-void super_init(struct nfs_super* super,int N, int k, int s) {
-    
-    super->disk_size = N * 1024;
-    super->is_mounted =  1;
-    super->super_bnum = 1;
-    double denominator = 1.0 + 1.0 / (8192 * k) + 
-                         1.0 / 8192 + (double)s / (1024 * k);
-    super->data_bnum  = (N - 1) / denominator;
-    super->inode_num = super->data_bnum / k ; 
-    super->inode_bnum = (super->inode_num * s + 1023) / 1024;
-    super->bitmap_inode_bnum = (super->inode_num + 8191) / 8192;
-    super->bitmap_data_bnum  = (super->data_bnum + 8191) / 8192;
+/* Function declarations */
+void super_init(struct nfs_super* super, int N, int k, int s);
+struct nfs_dentry* new_dentry(char* filename, FILE_TYPE ftype);
 
-    //保险起见，验证合法性
-    struct nfs_super tem = *super;
-    int sum = tem.data_bnum + tem.inode_bnum 
-              + tem.bitmap_inode_bnum + tem.bitmap_data_bnum + 1;
-    assert(sum <= N);
-    //计算各个磁盘中的offset
-    int start = 0;
-    start = 1024 * 1;
-    super->bitmap_inode_offset = start;
-    super->bitmap_inode_loc_d = start;
-    start += super->bitmap_inode_bnum * 1024;
-    super->bitmap_data_offset = start;
-    super->bitmap_data_loc_d = start;
-    start += super->bitmap_data_bnum * 1024;
-    super->inode_offset = start;
-    super->inode_loc_d = start;
-    start += super->inode_bnum * 1024;
-    super->data_loc_d = start;
-    super->data_begin_loc = start;
-    super->bitmap_inode = malloc(super->bitmap_inode_bnum * BLOCK_SZ);
-    super->bitmap_data  = malloc(super->bitmap_data_bnum * BLOCK_SZ);
-    super->inode_table  = malloc(super->inode_bnum * BLOCK_SZ);
-    return;
-}
-
-struct nfs_dentry* new_dentry(char* filename, FILE_TYPE ftype) {
-    struct nfs_dentry* new = (struct nfs_dentry*) malloc(sizeof(struct nfs_dentry));
-    memcpy(new->name, filename, strlen(filename));
-    new->ftype = ftype;
-    new->ino   = -1;
-    new->inode = NULL;
-    new->parent = NULL;
-    new->brother = NULL;
-    return new;
-}
 /*
 偏移量(字节)    区域
 ─────────────────────────────

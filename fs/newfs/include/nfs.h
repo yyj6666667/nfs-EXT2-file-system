@@ -17,9 +17,7 @@
 #define NFS_DEFAULT_PERM    0777   /* 全权限打开 */
 #define BLOCK_SZ  1024
 #define IO_SZ	  512
-#define DATABLOCK_PER_INODE 6
 #include "types.h"
-//extern const int DATABLOCK_PER_INODE;
 /******************************************************************************
 * SECTION: nfs.c
 *******************************************************************************/
