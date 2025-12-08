@@ -1,0 +1,16 @@
+# Build directory
+build/
+
+# Compiled objects
+*.o
+*.a
+*.so
+
+# Executables
+nfs
+
+# Driver dump
+ddriver_dump
+
+# Test mount points
+tests/mnt/*
