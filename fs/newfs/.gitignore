@@ -1,0 +1,18 @@
+# Build directory
+build/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+
+# Compiled binaries
+nfs
+*.o
+*.a
+*.so
+
+# Logs
+*.log
