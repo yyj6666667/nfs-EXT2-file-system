@@ -10,7 +10,7 @@ char* get_fname(const char* path);
 int calc_path_level(const char* path);
 void casual_read(int offset, char* out, int size);
 void casual_write(int offset, char* input, int size);
-void insert_dentry (struct nfs_inode* inode, nfs_dentry* dentry);
+void insert_dentry (struct nfs_inode* inode, nfs_dentry* dentry, FILE_TYPE ftype);
 void remove_dentry (struct nfs_inode* inode, nfs_dentry* dentry);
 nfs_inode* alloc_inode(nfs_dentry* dentry);
 void free_inode(nfs_dentry* dentry);

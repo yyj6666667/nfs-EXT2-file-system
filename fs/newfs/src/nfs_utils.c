@@ -56,7 +56,14 @@ void casual_write(int offset, char* input, int size) {
     free(input_dd);
 }
 
-void insert_dentry (struct nfs_inode* inode, nfs_dentry* dentry) {
+void insert_dentry (struct nfs_inode* inode, nfs_dentry* dentry, FILE_TYPE ftype) {
+    //分配创建,不知道这种大包大揽好不好哈哈哈哈哈哈
+    dentry = (nfs_dentry*) malloc(sizeof(nfs_dentry));
+    dentry->ftype = ftype;
+    dentry->parent = inode->dentry_self;
+    dentry->brother = NULL;
+    
+    //附加到parent上
     dentry->brother = inode->dentry_sons;
     inode->dentry_sons = dentry;
     inode->dir_count += 1;

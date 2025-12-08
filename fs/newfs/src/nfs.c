@@ -182,13 +182,9 @@ int nfs_mkdir(const char* path, mode_t mode) {
 		return -1;
 	} else {
 		nfs_inode* parent= found->inode;
-		nfs_dentry* new = (nfs_dentry*) malloc(sizeof(nfs_dentry));
-		//init
-		new->ftype = DIR;
-		new->parent = parent->dentry_self;
-		new->brother = NULL;
+		nfs_dentry* new_null = NULL;
 		//to-do
-		insert_dentry(parent, new);
+		insert_dentry(parent, new_null, DIR);
 		alloc_inode(new);
 		//不知道够不够
 	}
@@ -294,11 +290,27 @@ int nfs_mknod(const char* path, mode_t mode, dev_t dev) {
 	nfs_dentry* begin = general_find(path, &is_found);
 	if(is_found == 0 && begin != NULL) {
 		nfs_inode* parent = begin->inode;
-		nfs_dentry* new = (nfs_dentry*) malloc(sizeof(nfs_dentry));
-
+		switch (mode & __S_IFMT) {
+			case __S_IFREG: {
+				nfs_dentry* target = NULL;
+				insert_dentry(parent, target, REG);
+				break;
+			}
+			case __S_IFDIR: {
+				nfs_dentry* target = NULL;
+				insert_dentry(parent, target, DIR);
+			}
+			case __S_IFINK: {
+				nfs_dentry* target = NULL;
+				insert_dentry(parent, target, SYM_LINK);			
+				//写了也没用
+			}
+		}		
 	}
 	return 0;
 }
+	
+
 
 /**
  * @brief 修改时间，为了不让touch报错 
