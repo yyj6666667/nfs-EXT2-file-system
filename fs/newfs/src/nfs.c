@@ -142,10 +142,12 @@ void* nfs_init(struct fuse_conn_info * conn_info) {
 		root_inode = alloc_inode(root_dentry);
 		sync_inode_to_disk(root_inode);  //to finish
 		sync_bitmap_to_disk(root_inode);
+		super.root_inode = root_inode;
 	}  else {
 		//to-do 这里少了一个读取所有信息的逻辑
 		//危险
 		root_inode = alloc_inode(root_dentry);
+		super.root_inode = root_inode;
 	}
 	
 	

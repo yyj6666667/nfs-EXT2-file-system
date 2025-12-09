@@ -23,34 +23,6 @@ struct custom_options {
 	const char*        device;
 };
 
-typedef struct nfs_super {
-    uint32_t magic;
-    int      fd;
-    /* TODO: Define yourself */
-    uint8_t* bitmap_inode;
-    uint8_t* bitmap_data;
-    uint8_t* inode_table;
-    int     sz_io;
-    int     sz_blk;
-    int     disk_size;
-    int     is_mounted;
-    int     data_bnum; //数据块所占逻辑块块数
-    int     inode_num;
-    int     inode_bnum;
-    int     super_bnum;
-    int     bitmap_inode_bnum;
-    int     bitmap_data_bnum;
-    int     super_offset;
-    int     bitmap_inode_offset;
-    int     bitmap_data_offset;
-    int     inode_offset;
-    int     data_begin_loc;
-    int super_loc_d ;// which is super_loc_begin_loc_in_disk
-    int bitmap_inode_loc_d;
-    int bitmap_data_loc_d;
-    int inode_loc_d;
-    int data_loc_d;
-}nfs_super;
 
 typedef struct nfs_inode {
     uint32_t ino;
@@ -90,6 +62,36 @@ typedef struct {
     int dir_count;
     int direct_data[DATABLOCK_PER_INODE];//块号
 }nfs_inode_d;
+
+typedef struct nfs_super {
+    uint32_t magic;
+    int      fd;
+    /* TODO: Define yourself */
+    uint8_t* bitmap_inode;
+    uint8_t* bitmap_data;
+    uint8_t* inode_table;
+    int     sz_io;
+    int     sz_blk;
+    int     disk_size;
+    int     is_mounted;
+    int     data_bnum; //数据块所占逻辑块块数
+    int     inode_num;
+    int     inode_bnum;
+    int     super_bnum;
+    int     bitmap_inode_bnum;
+    int     bitmap_data_bnum;
+    int     super_offset;
+    int     bitmap_inode_offset;
+    int     bitmap_data_offset;
+    int     inode_offset;
+    int     data_begin_loc;
+    int super_loc_d ;// which is super_loc_begin_loc_in_disk
+    int bitmap_inode_loc_d;
+    int bitmap_data_loc_d;
+    int inode_loc_d;
+    int data_loc_d;
+    nfs_inode* root_inode;
+}nfs_super;
 
 /*
 偏移量(字节)    区域
