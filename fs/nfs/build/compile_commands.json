@@ -1,0 +1,12 @@
+[
+{
+  "directory": "/home/benjamin/home-lab/fs-tem/fs/nfs/build",
+  "command": "/usr/bin/gcc  -I/home/benjamin/home-lab/fs-tem/fs/nfs/./include  -D_FILE_OFFSET_BITS=64 -no-pie -g -Wall --pedantic -g -o CMakeFiles/nfs.dir/src/nfs.c.o -c /home/benjamin/home-lab/fs-tem/fs/nfs/src/nfs.c",
+  "file": "/home/benjamin/home-lab/fs-tem/fs/nfs/src/nfs.c"
+},
+{
+  "directory": "/home/benjamin/home-lab/fs-tem/fs/nfs/build",
+  "command": "/usr/bin/gcc  -I/home/benjamin/home-lab/fs-tem/fs/nfs/./include  -D_FILE_OFFSET_BITS=64 -no-pie -g -Wall --pedantic -g -o CMakeFiles/nfs.dir/src/nfs_utils.c.o -c /home/benjamin/home-lab/fs-tem/fs/nfs/src/nfs_utils.c",
+  "file": "/home/benjamin/home-lab/fs-tem/fs/nfs/src/nfs_utils.c"
+}
+]
