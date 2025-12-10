@@ -2,6 +2,60 @@
 #include <string.h>
 #include <assert.h>
 #include "../include/nfs_utils.h"
+
+//------------------------------------------/
+//工具函数的工具函数
+//------------------------------------------/
+
+int inode_loc_in_disk(nfs_inode* inode) {
+    int offset_bnum = super.super_bnum + super.bitmap_inode_bnum
+                    + super.bitmap_data_bnum;
+    int offset_1 = offset_bnum * BLOCK_SZ;
+    int bias = (inode->ino) * sizeof(nfs_inode_d);
+    int offset_final = offset_1 + bias;
+    return offset_final;
+}
+
+int data_loc_in_disk(int block_id) {
+    return super.data_begin_loc + block_id * BLOCK_SZ;
+}
+
+char* split_path_from_left(char* path) {
+    if(strcmp(path, "/") == 0) {
+        return NULL;
+    }
+    int loc = 0;
+    char* cursor = path + 1; 
+    while(*cursor != '/') {
+        loc++;
+        cursor++;
+    }
+    char* split = (char*) malloc(loc * sizeof(char));
+    memcpy(split, path, loc * sizeof(char));
+    return split;
+}
+
+nfs_dentry* find_child_dentry(nfs_dentry* parent, const char* 
+name) {
+    if (parent->inode->dentry_sons == NULL || parent->ftype != DIR) {
+        return NULL;
+    }
+    nfs_dentry* iter = parent->inode->dentry_sons;
+    while(iter != NULL) {
+        if(strcmp(iter->name, name) == 0) {
+            return iter;
+        }
+        iter = iter->brother;
+    }
+    DBG("sorry, we didn't find any");
+    return NULL;
+}
+
+//********************************************** */
+//正式开始
+//************************************************* */
+
+
 void super_init(struct nfs_super* super,int N, int k, int s) {
     
     super->disk_size = N * 1024;
@@ -9,7 +63,7 @@ void super_init(struct nfs_super* super,int N, int k, int s) {
     super->super_bnum = 1;
     double denominator = 1.0 + 1.0 / (8192 * k) + 
                          1.0 / 8192 + (double)s / (1024 * k);
-    super->data_bnum  = (N - 1) / denominator;
+    super->data_bnum  = (N - 1) / denominator - 10;//留点余地
     super->inode_num = super->data_bnum / k ; 
     super->inode_bnum = (super->inode_num * s + 1023) / 1024;
     super->bitmap_inode_bnum = (super->inode_num + 8191) / 8192;
@@ -204,6 +258,11 @@ void free_inode(nfs_dentry* dentry) {
 }
 
 void sync_inode_to_disk(nfs_inode *inode) {
+    //安全检查
+    if (inode == NULL) {
+        return;
+    }
+
     nfs_inode_d* buf_tem = (nfs_inode_d*) malloc(sizeof(nfs_inode_d));
     buf_tem->size = inode->size;
     buf_tem->ino  = inode->ino;
@@ -220,6 +279,7 @@ void sync_inode_to_disk(nfs_inode *inode) {
     FILE_TYPE type = inode->dentry_self->ftype;
     if(type == DIR) {
         nfs_dentry* sons = inode->dentry_sons;
+        if (sons == NULL) return;
         do {
             sync_inode_to_disk(sons->inode); //问题： 如果有data怎么办？
         } while(sons->brother != NULL);
@@ -303,16 +363,16 @@ void sync_super_to_disk() {
 /**
  * 抄袭板
  */
-nfs_dentry* general_find (const char* path, boolean* is_found) {
+nfs_dentry* general_find (const char* path, boolean* is_found, nfs_dentry* root_dentry) {
     *is_found = 0;
     if (calc_path_level(path) == 0) {
         *is_found = 1;
-        return (super.root_inode)->dentry_self;
+        return root_dentry;
     }
 
-    nfs_dentry* very_begin = super.root_inode->dentry_self;
+    nfs_dentry* very_begin = root_dentry;
     char* path_copy = strdup(path);
-    char* token = strtok_r(path_copy, "/");
+    char* token = strtok(path_copy, "/");
 
     while(token != NULL) {
         nfs_dentry* deeper = find_child_dentry(very_begin, token);
@@ -321,7 +381,7 @@ nfs_dentry* general_find (const char* path, boolean* is_found) {
             free(path_copy);
             return very_begin;
         } else {
-            token = strtok_r(NULL, "/");
+            token = strtok(NULL, "/");
             very_begin = deeper;
         }
     }
@@ -332,50 +392,3 @@ nfs_dentry* general_find (const char* path, boolean* is_found) {
 }
 
 
-
-//------------------------------------------/
-//工具函数的工具函数
-//------------------------------------------/
-
-int inode_loc_in_disk(nfs_inode* inode) {
-    int offset_bnum = super.super_bnum + super.bitmap_inode_bnum
-                    + super.bitmap_data_bnum;
-    int offset_1 = offset_bnum * BLOCK_SZ;
-    int bias = (inode->ino) * sizeof(nfs_inode_d);
-    int offset_final = offset_1 + bias;
-    return offset_final;
-}
-
-int data_loc_in_disk(int block_id) {
-    return super.data_begin_loc + block_id * BLOCK_SZ;
-}
-
-char* split_path_from_left(char* path) {
-    if(strcmp(path, "/") == 0) {
-        return NULL;
-    }
-    int loc = 0;
-    char* cursor = path + 1; 
-    while(*cursor != '/') {
-        loc++;
-        cursor++;
-    }
-    char* split = (char*) malloc(loc * sizeof(char));
-    memcpy(split, path, loc * sizeof(char));
-    return split;
-}
-
-nfs_dentry* find_child_dentry(nfs_dentry* parent, const char* name) {
-    if (parent->dentry_sons == NULL || parent->ftype != DIR) {
-        return NULL;
-    }
-    nfs_dentry* iter = parent->dentry_sons;
-    while(iter != NULL) {
-        if(strcmp(iter->name, name) == 0) {
-            return iter;
-        }
-        iter = iter->brother;
-    }
-    DBG("sorry, we didn't find any");
-    return NULL;
-}

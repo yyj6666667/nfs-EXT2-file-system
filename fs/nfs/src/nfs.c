@@ -148,7 +148,6 @@ void* nfs_init(struct fuse_conn_info * conn_info) {
 		root_inode = alloc_inode(root_dentry);
 	}
 	
-	
 
 	return NULL;
 }
@@ -181,7 +180,7 @@ void nfs_destroy(void* p) {
 int nfs_mkdir(const char* path, mode_t mode) {
 	/* TODO: 解析路径，创建目录 */
 	boolean is_found = 0;
-	nfs_dentry* found = general_find(path, &is_found);
+	nfs_dentry* found = general_find(path, &is_found, root_dentry);
 	if (is_found == 1) {
 		return -1;
 	} else {
@@ -205,7 +204,7 @@ int nfs_mkdir(const char* path, mode_t mode) {
 int nfs_getattr(const char* path, struct stat * nfs_stat) {
 	/* TODO: 解析路径，获取Inode，填充nfs_stat，可参考/fs/simplefs/nfs.c的nfs_getattr()函数实现 */
 	boolean	is_find, is_root;
-	struct nfs_dentry* dentry = general_find(path, &is_find);
+	struct nfs_dentry* dentry = general_find(path, &is_find, root_dentry);
 	if (is_find == 0) {
 		return -1;
 	}
@@ -260,7 +259,7 @@ int nfs_readdir(const char * path, void * buf, fuse_fill_dir_t filler, off_t off
 			    		 struct fuse_file_info * fi) {
     /* TODO: 解析路径，获取目录的Inode，并读取目录项，利用filler填充到buf，可参考/fs/simplefs/nfs.c的nfs_readdir()函数实现 */
 	boolean is_found = 0;
-	nfs_dentry* potential_res = general_find(path, &is_found);
+	nfs_dentry* potential_res = general_find(path, &is_found, root_dentry);
 	if (is_found == 1 && potential_res != NULL) {
 		/*
 		实际系统中：
@@ -291,7 +290,7 @@ int nfs_readdir(const char * path, void * buf, fuse_fill_dir_t filler, off_t off
 int nfs_mknod(const char* path, mode_t mode, dev_t dev) {
 	/* TODO: 解析路径，并创建相应的文件 */
 	boolean is_found;
-	nfs_dentry* begin = general_find(path, &is_found);
+	nfs_dentry* begin = general_find(path, &is_found, root_dentry);
 	if(is_found == 0 && begin != NULL) {
 		nfs_inode* parent = begin->inode;
 		switch (mode & __S_IFMT) {

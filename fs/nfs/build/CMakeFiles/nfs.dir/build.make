@@ -109,7 +109,7 @@ nfs: CMakeFiles/nfs.dir/src/nfs.c.o
 nfs: CMakeFiles/nfs.dir/src/nfs_utils.c.o
 nfs: CMakeFiles/nfs.dir/build.make
 nfs: /usr/lib/x86_64-linux-gnu/libfuse.so
-nfs: /home/benjamin/lib/libddriver.a
+nfs: /root/lib/libddriver.a
 nfs: CMakeFiles/nfs.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/benjamin/home-lab/fs-tem/fs/nfs/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking C executable nfs"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/nfs.dir/link.txt --verbose=$(VERBOSE)
