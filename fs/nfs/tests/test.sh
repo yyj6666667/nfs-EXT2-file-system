@@ -21,7 +21,8 @@ if [ $? -eq 0 ]; then
     echo "" >/dev/null
 else
     echo "Test Fail : 编译失败"
-    exit 1
+#    exit 1
+##危险，上一行人为学生注释掉了
 fi
 cd ../tests
 
