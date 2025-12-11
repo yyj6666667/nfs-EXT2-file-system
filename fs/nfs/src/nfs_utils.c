@@ -3,6 +3,8 @@
 #include <assert.h>
 #include "../include/nfs_utils.h"
 
+
+#define UGLY
 //------------------------------------------/
 //工具函数的工具函数
 //------------------------------------------/
@@ -95,8 +97,34 @@ void super_init(struct nfs_super* super,int N, int k, int s) {
 }
 
 struct nfs_dentry* new_dentry(char* filename, FILE_TYPE ftype) {
-    struct nfs_dentry* new = (struct nfs_dentry*) malloc(sizeof(struct nfs_dentry));
+    nfs_dentry* new;
+#ifdef UGLY
+    new = (struct nfs_dentry*) malloc(sizeof(struct nfs_dentry));
     memcpy(new->name, filename, strlen(filename));
+    //这段代码错在strcpy， 最后的/0没有写， 是malloc的随机垃圾值， 造成了相当严重的错误
+#else
+    int random = 1;
+    switch(random) {
+        case 1: {
+            // calloc 比 malloc 更安全， 因为它会自动memset字段为0
+            new = (nfs_dentry*) calloc(1, sizeof(nfs_dentry));
+            memcpy(new->name, filename, strlen(filename));
+            break;
+        }
+        case 2: {
+            new = (nfs_dentry*) malloc(sizeof(nfs_dentry));
+            memcpy(new->name, filename, strlen(filename));
+            *(new->name + strlen(filename)) = '\0'; // or = (char) 0
+            break;
+        }
+        case 3: {
+            //modern c write style
+            new = (nfs_dentry*) malloc(sizeof(nfs_dentry));
+            strcpy(new->name, filename);
+            break;
+        }
+    }  
+#endif
     new->ftype = ftype;
     new->ino   = -1;
     new->inode = NULL;
