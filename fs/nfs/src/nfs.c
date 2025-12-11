@@ -303,19 +303,25 @@
 		nfs_dentry* begin = general_find(path, &is_found, root_dentry);
 		if(is_found == 0 && begin != NULL) {
 			nfs_inode* parent = begin->inode;
+			char* filename = get_fname(path);
 			switch (mode & __S_IFMT) {
 				case __S_IFREG: {
 					nfs_dentry* target = NULL;
-					insert_dentry(parent, target, REG);
+					insert_dentry(parent, &target, REG);
+					strcpy(target->name, filename);
 					break;
 				}
 				case __S_IFDIR: {
 					nfs_dentry* target = NULL;
-					insert_dentry(parent, target, DIR);
+					insert_dentry(parent, &target, DIR);
+					strcpy(target->name, filename);
+					break;
 				}
 				case __S_IFLNK: {
 					nfs_dentry* target = NULL;
-					insert_dentry(parent, target, SYM_LINK);			
+					insert_dentry(parent, &target, SYM_LINK);	
+					strcpy(target->name, filename);
+					break;		
 					//写了也没用
 				}
 			}		
