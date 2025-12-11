@@ -49,7 +49,6 @@ name) {
         }
         iter = iter->brother;
     }
-    DBG("sorry, we didn't find any");
     return NULL;
 }
 

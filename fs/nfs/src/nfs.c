@@ -286,7 +286,7 @@
 
 		}
 		DBG("坏了， 没有找到");
-		return 2;
+		return -2;
 	}
 
 	/**
@@ -309,18 +309,21 @@
 					nfs_dentry* target = NULL;
 					insert_dentry(parent, &target, REG);
 					strcpy(target->name, filename);
+					alloc_inode(target);
 					break;
 				}
 				case __S_IFDIR: {
 					nfs_dentry* target = NULL;
 					insert_dentry(parent, &target, DIR);
 					strcpy(target->name, filename);
+					alloc_inode(target);
 					break;
 				}
 				case __S_IFLNK: {
 					nfs_dentry* target = NULL;
 					insert_dentry(parent, &target, SYM_LINK);	
 					strcpy(target->name, filename);
+					alloc_inode(target);
 					break;		
 					//写了也没用
 				}
