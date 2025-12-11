@@ -205,7 +205,7 @@ nfs_inode* alloc_inode(nfs_dentry* dentry) {
         int byte_num = i / 8;
         uint8_t mask = 0b1 << (7 - i % 8);
         uint8_t tem  = (super.bitmap_inode)[byte_num];
-        if ((tem & mask) != 0) {
+        if ((tem & mask) == 0) {
             tem |= mask;
             (super.bitmap_inode)[byte_num] = tem; //更新bitmap
             is_empty = 1; //标志位更新

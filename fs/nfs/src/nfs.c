@@ -164,7 +164,7 @@
 		sync_inode_to_disk(root_inode); //包含了sync 2 bitmap to disk
 		sync_super_to_disk();
 		super.is_mounted = 0;
-		free_inode(root_inode);
+		free_inode(root_dentry);
 		ddriver_close(super.fd);
 
 		return;
@@ -188,6 +188,10 @@
 			nfs_dentry* new_null = NULL;
 			//to-do
 			insert_dentry(parent, &new_null, DIR);
+			//debug 写名字
+			//name split from right
+			char* fname = get_fname(path);
+			memcpy(new_null->name, fname, strlen(fname));
 			alloc_inode(new_null);
 			//不知道够不够
 		}
@@ -206,7 +210,7 @@
 		boolean	is_find, is_root;
 		struct nfs_dentry* dentry = general_find(path, &is_find, root_dentry);
 		if (is_find == 0) {
-			return 0;
+			return -2;
 		}
 		is_root = (dentry == root_dentry) ? 1 : 0;
 
@@ -277,8 +281,9 @@
 			while(iter != NULL) {
 				filler(buf, iter->name, NULL, ++offset);
 				iter = iter->brother;
-				return 0;
 			}
+			return 0;
+
 		}
 		DBG("坏了， 没有找到");
 		return 2;
