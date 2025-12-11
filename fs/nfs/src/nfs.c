@@ -191,7 +191,7 @@
 			//debug 写名字
 			//name split from right
 			char* fname = get_fname(path);
-			memcpy(new_null->name, fname, strlen(fname));
+			strcpy(new_null->name, fname);
 			alloc_inode(new_null);
 			//不知道够不够
 		}
@@ -279,7 +279,7 @@
 			nfs_inode* parent = potential_res->inode;
 			nfs_dentry* iter = parent->dentry_sons;
 			while(iter != NULL) {
-				filler(buf, iter->name, NULL, ++offset);
+				filler(buf, iter->name, NULL, 0);//据说++offset 是分页模式
 				iter = iter->brother;
 			}
 			return 0;
