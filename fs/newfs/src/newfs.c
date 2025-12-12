@@ -505,7 +505,7 @@ int main(int argc, char **argv)
     int ret;
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 
-	newfs_options.device = strdup("/home/students/2023311I22/ddriver");
+	newfs_options.device = strdup("/home/students/2023311E01/ddriver");
 
 	if (fuse_opt_parse(&args, &newfs_options, option_spec, NULL) == -1)
 		return -1;

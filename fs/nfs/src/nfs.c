@@ -106,6 +106,7 @@
 			//为了方便，就不区分定义了
 			memcpy(&super, &super_disk, sizeof(struct nfs_super));
 			super.is_mounted = 1;
+			DBG("进入重新挂载分支");
 		} else {
 			//first load
 			is_init = 1;
@@ -117,10 +118,8 @@
 
 		}
 		
-		//ram 分配，公共部分
 		super.bitmap_data = (uint8_t*) malloc(super.bitmap_data_bnum * BLOCK_SZ);
 		super.bitmap_inode = (uint8_t*) malloc(super.bitmap_inode_bnum * BLOCK_SZ);
-
 		//todo 空间换时间，我们决定把inode table也读进来，大型系统中往往是按需读取
 		//notice seek_offset is 2 * blk_offset
 		ddriver_seek(super.fd, 0, 0);
@@ -132,10 +131,21 @@
 		//buf 的布局和磁盘是一致的，所以super变量可以复用
 		memcpy(super.bitmap_inode, buf + super.bitmap_inode_loc_d, super.bitmap_inode_bnum * BLOCK_SZ);
 		memcpy(super.bitmap_data,  buf + super.bitmap_data_loc_d,  super.bitmap_data_bnum * BLOCK_SZ);
-		memcpy(super.inode_table,  buf + super.inode_loc_d,        super.inode_bnum * BLOCK_SZ);
 		free(buf);
 
+		printf("打印启动信息");
+		printf("super_blk = %d, bitmap_blk = %d, bitmap_blk2 = %d, inode_blk = %d, data_blk = %d",
+						1,
+						super.bitmap_inode_bnum,
+						super.bitmap_data_bnum,
+						super.inode_bnum,
+						super.data_bnum);
 		printf("\n--------------------------------------------------------------------------------\n\n");
+
+		//debug: 增添一个super写入的逻辑， 方便remount
+		if (is_init) {
+			
+		}
 		//nfs_dump_map();
 		//这里直接拿到root_inode
 		if (is_init) {
@@ -161,12 +171,13 @@
 	void nfs_destroy(void* p) {
 		/* TODO: 在这里进行卸载 */
 		//oper for safe: last sync
+		super.is_mounted = 0;
 		sync_inode_to_disk(root_inode); //包含了sync 2 bitmap to disk
 		sync_super_to_disk();
-		super.is_mounted = 0;
 		free_inode(root_dentry);
 		ddriver_close(super.fd);
 
+		free_super_ram();
 		return;
 	}
 

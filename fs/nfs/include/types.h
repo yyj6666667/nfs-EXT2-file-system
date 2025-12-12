@@ -29,7 +29,6 @@ typedef struct nfs_super {
     /* TODO: Define yourself */
     uint8_t* bitmap_inode;
     uint8_t* bitmap_data;
-    uint8_t* inode_table;
     int     sz_io;
     int     sz_blk;
     int     disk_size;

@@ -91,7 +91,6 @@ void super_init(struct nfs_super* super,int N, int k, int s) {
     super->data_begin_loc = start;
     super->bitmap_inode = malloc(super->bitmap_inode_bnum * BLOCK_SZ);
     super->bitmap_data  = malloc(super->bitmap_data_bnum * BLOCK_SZ);
-    super->inode_table  = malloc(super->inode_bnum * BLOCK_SZ);
     return;
 }
 
@@ -351,6 +350,11 @@ void sync_bitmap_to_disk(nfs_inode* inode) {
 
 void sync_super_to_disk() {
     casual_write(0, (char*)&super, sizeof(nfs_super)); //我还是想着nfs_super共用就算了
+}
+
+void free_super_ram() {
+    free(super.bitmap_inode);
+    free(super.bitmap_data);
 }
 
 ///**
