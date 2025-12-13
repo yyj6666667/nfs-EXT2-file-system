@@ -90,6 +90,12 @@ typedef struct {
     int direct_data[DATABLOCK_PER_INODE];//块号
 }nfs_inode_d;
 
+typedef struct {
+    char    name[MAX_NAME_LEN];
+    uint32_t ino;
+    FILE_TYPE ftype;
+}nfs_dentry_d;
+
 /*
 偏移量(字节)    区域
 ─────────────────────────────

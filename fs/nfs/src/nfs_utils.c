@@ -57,8 +57,9 @@ name) {
 //************************************************* */
 
 
-void super_init(struct nfs_super* super,int N, int k, int s) {
+void super_init(struct nfs_super* super,int N, int k, int s, int nfs_magic) {
     
+    super->magic = nfs_magic;
     super->disk_size = N * 1024;
     super->is_mounted =  1;
     super->super_bnum = 1;
@@ -247,9 +248,7 @@ nfs_inode* alloc_inode(nfs_dentry* dentry) {
         new->dentry_sons = NULL;
         new->dir_count = 0;
         super.bitmap_inode[ino_cursor] = 1;
-        if(dentry->ftype == REG) {
-            new->data = (uint8_t*) malloc(DATABLOCK_PER_INODE * BLOCK_SZ);
-        }
+        new->data = (uint8_t*) malloc(DATABLOCK_PER_INODE * BLOCK_SZ);
         return new;
     } else {
         DBG("没有空闲inode，分配失败");
@@ -311,7 +310,7 @@ void sync_inode_to_disk(nfs_inode *inode) {
         } while(sons->brother != NULL);
     }
      
-    if(inode->data != NULL){
+    if(inode->data != NULL){ // 现在看来， 这是防御性的
         int data_blk_id   = inode->ino * DATABLOCK_PER_INODE;
         int data_loc_disk = data_loc_in_disk(data_blk_id);
         casual_write(data_loc_disk, (char*)inode->data, inode->size);
@@ -422,4 +421,9 @@ nfs_dentry* general_find (const char* path, boolean* is_found, nfs_dentry* root_
     return very_begin;
 }
 
+int rebuilt_from_disk(nfs_super* super_ram, nfs_super* super_disk, nfs_inode* root_inode) {
+    memcpy(super_ram, super_disk, sizeof(nfs_super));
+    //toooooooooooodo
+    //烦的很， 把磁盘全部读进来很不经济， 我们的general_find是在ram端全部重建完成的前提下写的， 如果要实现按需读取目录，需要重写面向磁盘的general_find
+}
 

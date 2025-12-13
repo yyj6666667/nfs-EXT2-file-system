@@ -92,7 +92,7 @@
 		super.fd = ddriver_open(nfs_options.device);
 		super.sz_io = 512;
 		super.sz_blk = BLOCK_SZ;
-		is_init = 0;
+		is_init = -1;
 
 		root_dentry = new_dentry("/", DIR);
 
@@ -101,37 +101,77 @@
 		super.super_loc_d = 0;
 		super_disk.super_loc_d = 0;
 		ddriver_read(super.fd, (char*)&super_disk, sizeof(struct nfs_super));
+		//设置is_init
 		if(NFS_MAGIC == super_disk.magic && super_disk.is_mounted == 0) {
-			// reload
-			//为了方便，就不区分定义了
-			memcpy(&super, &super_disk, sizeof(struct nfs_super));
-			super.is_mounted = 1;
-			DBG("进入重新挂载分支");
+			is_init = 0;
 		} else {
-			//first load
 			is_init = 1;
-			int disk_size;
-			ddriver_ioctl(super.fd, IOC_REQ_DEVICE_SIZE, &disk_size);// 太丑了
-			super_init(&super, disk_size / 1024, DATABLOCK_PER_INODE, sizeof(struct nfs_inode));
-			super.magic     = NFS_MAGIC;
-			//写inode-map, datamap
+		}
+
+		if (is_init < 0) {
+			DBG("无法判断是否初始化");
+			return NULL;
+		}
+
+		switch(is_init) {
+			case 1 : {
+				int disk_size;
+				ddriver_ioctl(super.fd, IOC_REQ_DEVICE_SIZE, &disk_size);
+				super_init(&super, disk_size / 1024, DATABLOCK_PER_INODE, sizeof(struct nfs_inode), NFS_MAGIC);
+			//alloc root inode and dentry
+				//哈哈， 实际上这里的变量root_dentry是一个引子变量
+				root_inode = alloc_inode(root_dentry);
+				assert(root_inode->ino == 0);
+
+				nfs_dentry_d* root_dentry_d = (nfs_dentry_d*) calloc(1, sizeof(nfs_dentry_d));
+				strcpy(root_dentry_d->name, root_dentry->name);
+				root_dentry_d->ino = root_dentry->ino;
+				root_dentry_d->ftype = root_dentry->ftype;
+
+				memcpy(root_inode->data, root_dentry_d, sizeof(nfs_dentry_d));
+				sync_inode_to_disk(root_inode);
+				printf("初始化完毕");
+			}
+			case 0 : {
+				//实现inode,dentry树结构 在ram的重建
+				if(rebuilt_from_disk(&super, &super_disk, root_inode) != 0) {
+					DBG("rebuilt 失败");
+					return NULL;
+				}
+			}
 
 		}
+		//if(NFS_MAGIC == super_disk.magic && super_disk.is_mounted == 0) {
+		//	// reload
+		//	//为了方便，就不区分定义了
+		//	memcpy(&super, &super_disk, sizeof(struct nfs_super));
+		//	super.is_mounted = 1;
+		//	DBG("进入重新挂载分支");
+		//} else {
+		//	//first load
+		//	is_init = 1;
+		//	int disk_size;
+		//	ddriver_ioctl(super.fd, IOC_REQ_DEVICE_SIZE, &disk_size);// 太丑了
+		//	super_init(&super, disk_size / 1024, DATABLOCK_PER_INODE, sizeof(struct nfs_inode));
+		//	super.magic     = NFS_MAGIC;
+		//	//写inode-map, datamap
+//
+		//}
 		
-		super.bitmap_data = (uint8_t*) malloc(super.bitmap_data_bnum * BLOCK_SZ);
-		super.bitmap_inode = (uint8_t*) malloc(super.bitmap_inode_bnum * BLOCK_SZ);
+		
+		
 		//todo 空间换时间，我们决定把inode table也读进来，大型系统中往往是按需读取
 		//notice seek_offset is 2 * blk_offset
-		ddriver_seek(super.fd, 0, 0);
-		int total_blks = 1 + super.bitmap_data_bnum +
-						super.bitmap_inode_bnum +
-						super.inode_bnum;
-		char* buf = calloc(total_blks, BLOCK_SZ);
-		ddriver_read(super.fd, buf, total_blks * BLOCK_SZ);
-		//buf 的布局和磁盘是一致的，所以super变量可以复用
-		memcpy(super.bitmap_inode, buf + super.bitmap_inode_loc_d, super.bitmap_inode_bnum * BLOCK_SZ);
-		memcpy(super.bitmap_data,  buf + super.bitmap_data_loc_d,  super.bitmap_data_bnum * BLOCK_SZ);
-		free(buf);
+	//	ddriver_seek(super.fd, 0, 0);
+	//	int total_blks = 1 + super.bitmap_data_bnum +
+	//					super.bitmap_inode_bnum +
+	//					super.inode_bnum;
+	//	char* buf = calloc(total_blks, BLOCK_SZ);
+	//	ddriver_read(super.fd, buf, total_blks * BLOCK_SZ);
+	//	//buf 的布局和磁盘是一致的，所以super变量可以复用
+	//	memcpy(super.bitmap_inode, buf + super.bitmap_inode_loc_d, super.bitmap_inode_bnum * BLOCK_SZ);
+	//	memcpy(super.bitmap_data,  buf + super.bitmap_data_loc_d,  super.bitmap_data_bnum * BLOCK_SZ);
+	//	free(buf);
 
 		printf("打印启动信息");
 		printf("super_blk = %d, bitmap_blk = %d, bitmap_blk2 = %d, inode_blk = %d, data_blk = %d",
@@ -141,24 +181,6 @@
 						super.inode_bnum,
 						super.data_bnum);
 		printf("\n--------------------------------------------------------------------------------\n\n");
-
-		//debug: 增添一个super写入的逻辑， 方便remount
-		if (is_init) {
-			
-		}
-		//nfs_dump_map();
-		//这里直接拿到root_inode
-		if (is_init) {
-			root_inode = alloc_inode(root_dentry);
-			sync_inode_to_disk(root_inode);  //to finish
-			sync_bitmap_to_disk(root_inode);
-		}  else {
-			//to-do 这里少了一个读取所有信息的逻辑
-			//危险
-			root_inode = alloc_inode(root_dentry);
-		}
-		
-
 		return NULL;
 	}
 
