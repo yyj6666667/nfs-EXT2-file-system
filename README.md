@@ -13,3 +13,6 @@ debug log:
 * 注意，把磁盘全部读进来很不经济， general_find是在ram端全部重建完成的前提下写的， 如果要实现按需读取目录，需要重写面向磁盘的general_find
 * 注意 alloc_inode 过后没有传buf往里面写数据
 ---
+12.14
+* root_dentry 存到super里面， 指向第一个inode， 是最经济的
+* 有疑问， rebuilt_by_inode(), nfs_inode* super按值传递调用了很深的栈，会有问题吗？

@@ -2,7 +2,6 @@
     "files.associations": {
         "*.cjson": "jsonc",
         "*.wxss": "css",
-        "*.wxs": "javascript",
         "ioctl.h": "c",
         "sfs.h": "c",
         "ddriver.h": "c",

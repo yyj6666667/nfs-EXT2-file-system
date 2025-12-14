@@ -174,6 +174,10 @@ void casual_read(int offset, char* out, int size) {
 }
 
 void casual_write(int offset, char* input, int size) {
+    if(input == NULL) {
+        DBG("input指针为null，没法写");
+        assert(input != NULL);
+    }
     int offset_for_ddriver = (offset / IO_SZ) * IO_SZ;
     int bias = offset - offset_for_ddriver;
     int size_for_ddriver   = ((size + bias + IO_SZ - 1) / IO_SZ) * IO_SZ;
@@ -297,7 +301,12 @@ void sync_inode_to_disk(nfs_inode *inode) {
             *(buf_tem->direct_data + j) = i;
         }
     int loc_in_disk = inode_loc_in_disk(inode);
+    //写inode
     casual_write(loc_in_disk, (char*)buf_tem, sizeof(nfs_inode_d));
+    //写数据
+    int data_blk_id = (buf_tem->direct_data)[0];
+    int data_loc_disk = data_loc_in_disk(data_blk_id);
+    casual_write(data_loc_disk, (char*)inode->data, BLOCK_SZ * DATABLOCK_PER_INODE);   
     free(buf_tem);
 
     //好了，既然本体已经写入，那么开始愉快的递归吧, 我发现有的递归逻辑写在前面，有的写在后面
@@ -308,12 +317,6 @@ void sync_inode_to_disk(nfs_inode *inode) {
         do {
             sync_inode_to_disk(sons->inode); //问题： 如果有data怎么办？
         } while(sons->brother != NULL);
-    }
-     
-    if(inode->data != NULL){ // 现在看来， 这是防御性的
-        int data_blk_id   = inode->ino * DATABLOCK_PER_INODE;
-        int data_loc_disk = data_loc_in_disk(data_blk_id);
-        casual_write(data_loc_disk, (char*)inode->data, inode->size);
     }
 
     //two bitmap
@@ -421,9 +424,60 @@ nfs_dentry* general_find (const char* path, boolean* is_found, nfs_dentry* root_
     return very_begin;
 }
 
-int rebuilt_from_disk(nfs_super* super_ram, nfs_super* super_disk, nfs_inode* root_inode) {
-    memcpy(super_ram, super_disk, sizeof(nfs_super));
-    //toooooooooooodo
-    //烦的很， 把磁盘全部读进来很不经济， 我们的general_find是在ram端全部重建完成的前提下写的， 如果要实现按需读取目录，需要重写面向磁盘的general_find
+/**
+ * @brief 根据ino， 读取disk中的data段到buf， 返回buf指针
+ */
+char* read_inode_data_disk(nfs_super* super, int ino){
+    int loc_d = super->data_loc_d + ino * DATABLOCK_PER_INODE * BLOCK_SZ;
+    char* buf = (char*) calloc(DATABLOCK_PER_INODE, BLOCK_SZ);
+
+    ddriver_seek(super->fd, loc_d, 0);
+    ddriver_read(super->fd, buf, DATABLOCK_PER_INODE * BLOCK_SZ);
+    return buf;
+}
+
+/**
+ * @param inode : parent inode, go on constructing from it
+ */
+int rebuilt_by_inode(nfs_inode* inode, nfs_super* super){
+    switch(inode->dentry_self->ftype) {
+        case DIR : {
+            int check_num = inode->size / sizeof(nfs_dentry_d);
+            if (check_num == inode->dir_count) {
+                char* data = read_inode_data_disk(super, inode->ino);
+                nfs_dentry_d* iter = (nfs_dentry_d*) data;
+                for (int i = 0; i < inode->dir_count; i++) {
+                    nfs_dentry* dentry_to_add = new_dentry(iter->name, iter->ftype);
+                    dentry_to_add->parent = inode->dentry_self;
+                    //头结点插入
+                    dentry_to_add->brother = inode->dentry_sons;
+                    inode->dentry_sons = dentry_to_add;
+                    nfs_inode* inode_to_add = alloc_inode(dentry_to_add);
+                    //潜在的递归, 是DIR就继续往下走
+                    if (iter->ftype == DIR) {
+                        rebuilt_by_inode(inode_to_add, super);
+                    }
+                }
+                //调用深了有堆溢出风险哈哈哈
+                free(data);
+            }
+        }
+        case REG : {
+            //我想实现懒汉式加载， 所以在重建期就不读数据到ram了
+        }
+        case SYM_LINK : {
+        }
+    }
+    return 0;
+}
+
+int total_rebuilt_from_disk(nfs_super* super, nfs_super* super_disk, nfs_inode* root_inode) {
+    memcpy(super, super_disk, sizeof(nfs_super));
+    //read 2 bitmap, 这个会把inode_size之外的碎片0也读进来
+    casual_read(super->bitmap_inode_loc_d, super->bitmap_inode, super->bitmap_inode_bnum * BLOCK_SZ);
+    casual_read(super->bitmap_data_loc_d, super->bitmap_data, super->bitmap_data_bnum * BLOCK_SZ);
+    //read all dentry, construct trees in ram
+    rebuilt_by_inode(root_inode, super);
+    return 0;
 }
 

@@ -127,38 +127,20 @@
 				strcpy(root_dentry_d->name, root_dentry->name);
 				root_dentry_d->ino = root_dentry->ino;
 				root_dentry_d->ftype = root_dentry->ftype;
+				memcpy(&(super.root_dentry_d), root_dentry_d, sizeof(nfs_dentry_d));
 
-				memcpy(root_inode->data, root_dentry_d, sizeof(nfs_dentry_d));
 				sync_inode_to_disk(root_inode);
 				printf("初始化完毕");
 			}
 			case 0 : {
 				//实现inode,dentry树结构 在ram的重建
-				if(rebuilt_from_disk(&super, &super_disk, root_inode) != 0) {
+				if(total_rebuilt_from_disk(&super, &super_disk, root_inode) != 0) {
 					DBG("rebuilt 失败");
 					return NULL;
 				}
 			}
 
 		}
-		//if(NFS_MAGIC == super_disk.magic && super_disk.is_mounted == 0) {
-		//	// reload
-		//	//为了方便，就不区分定义了
-		//	memcpy(&super, &super_disk, sizeof(struct nfs_super));
-		//	super.is_mounted = 1;
-		//	DBG("进入重新挂载分支");
-		//} else {
-		//	//first load
-		//	is_init = 1;
-		//	int disk_size;
-		//	ddriver_ioctl(super.fd, IOC_REQ_DEVICE_SIZE, &disk_size);// 太丑了
-		//	super_init(&super, disk_size / 1024, DATABLOCK_PER_INODE, sizeof(struct nfs_inode));
-		//	super.magic     = NFS_MAGIC;
-		//	//写inode-map, datamap
-//
-		//}
-		
-		
 		
 		//todo 空间换时间，我们决定把inode table也读进来，大型系统中往往是按需读取
 		//notice seek_offset is 2 * blk_offset

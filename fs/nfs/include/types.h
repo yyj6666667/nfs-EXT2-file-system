@@ -23,6 +23,12 @@ struct custom_options {
 	const char*        device;
 };
 
+typedef struct {
+    char    name[MAX_NAME_LEN];
+    uint32_t ino;
+    FILE_TYPE ftype;
+}nfs_dentry_d;
+
 typedef struct nfs_super {
     uint32_t magic;
     int      fd;
@@ -49,6 +55,7 @@ typedef struct nfs_super {
     int bitmap_data_loc_d;
     int inode_loc_d;
     int data_loc_d;
+    nfs_dentry_d root_dentry_d;
 }nfs_super;
 
 typedef struct nfs_inode {
@@ -73,28 +80,12 @@ typedef struct nfs_dentry {
 } nfs_dentry;
 
 typedef struct {
-    int magic;
-    int disk_size;
-    int ino_n;
-    int inode_bnum;
-    int bitmap_data_bnum;
-    int bitmap_inode_bnum;
-    int data_bnum;
-    int data_start_offset;
-}nfs_super_d;
-
-typedef struct {
     int ino;
     int size;//file's byte size
     int dir_count;
     int direct_data[DATABLOCK_PER_INODE];//块号
 }nfs_inode_d;
 
-typedef struct {
-    char    name[MAX_NAME_LEN];
-    uint32_t ino;
-    FILE_TYPE ftype;
-}nfs_dentry_d;
 
 /*
 偏移量(字节)    区域

@@ -21,7 +21,7 @@ void sync_bitmap_to_disk(nfs_inode* inode);
 void sync_super_to_disk();
 void free_super_ram();
 nfs_dentry* general_find(const char* path, boolean* is_found, nfs_dentry* root_dentry);
-int rebuilt_from_disk(nfs_super* super_ram, nfs_super* super_disk, nfs_inode* root_inode);
+int total_rebuilt_from_disk(nfs_super* super_ram, nfs_super* super_disk, nfs_inode* root_inode);
 
 
 #endif /* _UTILS_H_ */
