@@ -100,7 +100,7 @@
 		struct nfs_super super_disk ;
 		super.super_loc_d = 0;
 		super_disk.super_loc_d = 0;
-		ddriver_read(super.fd, (char*)&super_disk, sizeof(struct nfs_super));
+		casual_read(0, (char*)&super_disk, sizeof(struct nfs_super));
 		//设置is_init
 		if(NFS_MAGIC == super_disk.magic && super_disk.is_mounted == 0) {
 			is_init = 0;
@@ -130,14 +130,17 @@
 				memcpy(&(super.root_dentry_d), root_dentry_d, sizeof(nfs_dentry_d));
 
 				sync_inode_to_disk(root_inode);
-				printf("初始化完毕");
+				printf("初始化完毕\n");
+				break;
 			}
 			case 0 : {
 				//实现inode,dentry树结构 在ram的重建
+				root_inode = alloc_inode(root_dentry);
 				if(total_rebuilt_from_disk(&super, &super_disk, root_inode) != 0) {
 					DBG("rebuilt 失败");
 					return NULL;
 				}
+				break;
 			}
 
 		}
@@ -178,6 +181,11 @@
 		super.is_mounted = 0;
 		sync_inode_to_disk(root_inode); //包含了sync 2 bitmap to disk
 		sync_super_to_disk();
+		//debug: 检测是否真的写进去了
+		//nfs_super* tem = calloc(1, sizeof(nfs_super));
+		//casual_read(0, (char*)tem, sizeof(nfs_super));
+
+
 		free_inode(root_dentry);
 		ddriver_close(super.fd);
 

@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "*.java": "java",
+        "nfs_utils.h": "c",
+        "nfs.h": "c"
+    }
+}

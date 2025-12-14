@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include "../include/nfs_utils.h"
 
 
@@ -90,8 +89,8 @@ void super_init(struct nfs_super* super,int N, int k, int s, int nfs_magic) {
     start += super->inode_bnum * 1024;
     super->data_loc_d = start;
     super->data_begin_loc = start;
-    super->bitmap_inode = malloc(super->bitmap_inode_bnum * BLOCK_SZ);
-    super->bitmap_data  = malloc(super->bitmap_data_bnum * BLOCK_SZ);
+    super->bitmap_inode = calloc(1, super->bitmap_inode_bnum * BLOCK_SZ);
+    super->bitmap_data  = calloc(1, super->bitmap_data_bnum * BLOCK_SZ);
     return;
 }
 
@@ -240,10 +239,12 @@ nfs_inode* alloc_inode(nfs_dentry* dentry) {
             tem |= mask;
             (super.bitmap_inode)[byte_num] = tem; //更新bitmap
             is_empty = 1; //标志位更新
+            ino_cursor = i;
+            break;
         }
     }
     if (is_empty || ino_cursor < super.inode_num) {
-        nfs_inode* new = (nfs_inode*) malloc(sizeof(nfs_inode));
+        nfs_inode* new = (nfs_inode*) calloc(1, sizeof(nfs_inode));
         new->ino = ino_cursor;
         dentry->ino = new->ino;
         new->size = 0;
@@ -454,18 +455,21 @@ int rebuilt_by_inode(nfs_inode* inode, nfs_super* super){
                     inode->dentry_sons = dentry_to_add;
                     nfs_inode* inode_to_add = alloc_inode(dentry_to_add);
                     //潜在的递归, 是DIR就继续往下走
-                    if (iter->ftype == DIR) {
+                    if (iter->ftype == DIR && inode_to_add != NULL) {
                         rebuilt_by_inode(inode_to_add, super);
                     }
                 }
                 //调用深了有堆溢出风险哈哈哈
                 free(data);
             }
+            break;
         }
         case REG : {
             //我想实现懒汉式加载， 所以在重建期就不读数据到ram了
+            break;
         }
         case SYM_LINK : {
+            break;
         }
     }
     return 0;
@@ -474,8 +478,8 @@ int rebuilt_by_inode(nfs_inode* inode, nfs_super* super){
 int total_rebuilt_from_disk(nfs_super* super, nfs_super* super_disk, nfs_inode* root_inode) {
     memcpy(super, super_disk, sizeof(nfs_super));
     //read 2 bitmap, 这个会把inode_size之外的碎片0也读进来
-    casual_read(super->bitmap_inode_loc_d, super->bitmap_inode, super->bitmap_inode_bnum * BLOCK_SZ);
-    casual_read(super->bitmap_data_loc_d, super->bitmap_data, super->bitmap_data_bnum * BLOCK_SZ);
+    casual_read(super->bitmap_inode_loc_d, (char*)(super->bitmap_inode), super->bitmap_inode_bnum * BLOCK_SZ);
+    casual_read(super->bitmap_data_loc_d, (char*)(super->bitmap_data), super->bitmap_data_bnum * BLOCK_SZ);
     //read all dentry, construct trees in ram
     rebuilt_by_inode(root_inode, super);
     return 0;

@@ -3,6 +3,7 @@
 
 #include "../include/nfs.h"
 #include <string.h>
+#include <assert.h>
 #define  DBG(str)  do{printf("debugINFO: %s\n", str);}while(0)
 
 //tools functions declaration
