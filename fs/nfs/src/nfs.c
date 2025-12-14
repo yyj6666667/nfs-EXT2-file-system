@@ -135,6 +135,9 @@
 			}
 			case 0 : {
 				//实现inode,dentry树结构 在ram的重建
+				memcpy(&super, &super_disk, sizeof(nfs_super));
+				super.bitmap_inode = calloc(1, super.bitmap_inode_bnum * BLOCK_SZ);
+				super.bitmap_data  = calloc(1, super.bitmap_data_bnum * BLOCK_SZ);
 				root_inode = alloc_inode(root_dentry);
 				if(total_rebuilt_from_disk(&super, &super_disk, root_inode) != 0) {
 					DBG("rebuilt 失败");
@@ -142,8 +145,10 @@
 				}
 				break;
 			}
-
 		}
+
+		//debug info
+		printf("bitmap inode map location in disk is : %d", super.bitmap_inode_loc_d);
 		
 		//todo 空间换时间，我们决定把inode table也读进来，大型系统中往往是按需读取
 		//notice seek_offset is 2 * blk_offset
@@ -182,8 +187,8 @@
 		sync_inode_to_disk(root_inode); //包含了sync 2 bitmap to disk
 		sync_super_to_disk();
 		//debug: 检测是否真的写进去了
-		//nfs_super* tem = calloc(1, sizeof(nfs_super));
-		//casual_read(0, (char*)tem, sizeof(nfs_super));
+		nfs_super* tem = calloc(1, sizeof(nfs_super));
+		casual_read(0, (char*)tem, sizeof(nfs_super));
 
 
 		free_inode(root_dentry);

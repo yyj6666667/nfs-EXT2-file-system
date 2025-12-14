@@ -207,6 +207,8 @@ void insert_dentry (struct nfs_inode* inode, nfs_dentry** dentry, FILE_TYPE ftyp
 }
 
 void remove_dentry (nfs_inode* inode, nfs_dentry* dentry) {
+    if (inode == NULL) 
+        return;
     nfs_dentry* tem = inode->dentry_sons;
     if (tem == NULL) return;
     if (tem == dentry) {
@@ -243,7 +245,7 @@ nfs_inode* alloc_inode(nfs_dentry* dentry) {
             break;
         }
     }
-    if (is_empty || ino_cursor < super.inode_num) {
+    if (is_empty && ino_cursor < super.inode_num) {
         nfs_inode* new = (nfs_inode*) calloc(1, sizeof(nfs_inode));
         new->ino = ino_cursor;
         dentry->ino = new->ino;
@@ -252,7 +254,6 @@ nfs_inode* alloc_inode(nfs_dentry* dentry) {
         new->dentry_self = dentry;
         new->dentry_sons = NULL;
         new->dir_count = 0;
-        super.bitmap_inode[ino_cursor] = 1;
         new->data = (uint8_t*) malloc(DATABLOCK_PER_INODE * BLOCK_SZ);
         return new;
     } else {
@@ -476,7 +477,6 @@ int rebuilt_by_inode(nfs_inode* inode, nfs_super* super){
 }
 
 int total_rebuilt_from_disk(nfs_super* super, nfs_super* super_disk, nfs_inode* root_inode) {
-    memcpy(super, super_disk, sizeof(nfs_super));
     //read 2 bitmap, 这个会把inode_size之外的碎片0也读进来
     casual_read(super->bitmap_inode_loc_d, (char*)(super->bitmap_inode), super->bitmap_inode_bnum * BLOCK_SZ);
     casual_read(super->bitmap_data_loc_d, (char*)(super->bitmap_data), super->bitmap_data_bnum * BLOCK_SZ);
