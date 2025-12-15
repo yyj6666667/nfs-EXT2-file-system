@@ -135,10 +135,12 @@
 			}
 			case 0 : {
 				//实现inode,dentry树结构 在ram的重建
+				int fd_bak = super.fd;
 				memcpy(&super, &super_disk, sizeof(nfs_super));
 				super.bitmap_inode = calloc(1, super.bitmap_inode_bnum * BLOCK_SZ);
+				super.fd = fd_bak;
 				super.bitmap_data  = calloc(1, super.bitmap_data_bnum * BLOCK_SZ);
-				root_inode = alloc_inode(root_dentry);
+				root_inode = restore_inode(root_dentry, 0);
 				if(total_rebuilt_from_disk(&super, &super_disk, root_inode) != 0) {
 					DBG("rebuilt 失败");
 					return NULL;
@@ -184,7 +186,8 @@
 		/* TODO: 在这里进行卸载 */
 		//oper for safe: last sync
 		super.is_mounted = 0;
-		sync_inode_to_disk(root_inode); //包含了sync 2 bitmap to disk
+		sync_inode_to_disk(root_inode); 
+		sync_bitmap_to_disk(NULL);
 		sync_super_to_disk();
 		//debug: 检测是否真的写进去了
 		nfs_super* tem = calloc(1, sizeof(nfs_super));

@@ -23,6 +23,7 @@ void sync_super_to_disk();
 void free_super_ram();
 nfs_dentry* general_find(const char* path, boolean* is_found, nfs_dentry* root_dentry);
 int total_rebuilt_from_disk(nfs_super* super_ram, nfs_super* super_disk, nfs_inode* root_inode);
+nfs_inode* restore_inode(nfs_dentry* dentry, int ino);
 
 
 #endif /* _UTILS_H_ */
