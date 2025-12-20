@@ -102,7 +102,7 @@
 		super_disk.super_loc_d = 0;
 		casual_read(0, (char*)&super_disk, sizeof(struct nfs_super));
 		//设置is_init
-		if(NFS_MAGIC == super_disk.magic && super_disk.is_mounted == 0) {
+		if(NFS_MAGIC == super_disk.magic ) {
 			is_init = 0;
 		} else {
 			is_init = 1;
@@ -151,19 +151,6 @@
 
 		//debug info
 		printf("bitmap inode map location in disk is : %d", super.bitmap_inode_loc_d);
-		
-		//todo 空间换时间，我们决定把inode table也读进来，大型系统中往往是按需读取
-		//notice seek_offset is 2 * blk_offset
-	//	ddriver_seek(super.fd, 0, 0);
-	//	int total_blks = 1 + super.bitmap_data_bnum +
-	//					super.bitmap_inode_bnum +
-	//					super.inode_bnum;
-	//	char* buf = calloc(total_blks, BLOCK_SZ);
-	//	ddriver_read(super.fd, buf, total_blks * BLOCK_SZ);
-	//	//buf 的布局和磁盘是一致的，所以super变量可以复用
-	//	memcpy(super.bitmap_inode, buf + super.bitmap_inode_loc_d, super.bitmap_inode_bnum * BLOCK_SZ);
-	//	memcpy(super.bitmap_data,  buf + super.bitmap_data_loc_d,  super.bitmap_data_bnum * BLOCK_SZ);
-	//	free(buf);
 
 		printf("打印启动信息");
 		printf("super_blk = %d, bitmap_blk = %d, bitmap_blk2 = %d, inode_blk = %d, data_blk = %d",

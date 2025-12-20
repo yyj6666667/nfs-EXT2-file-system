@@ -172,10 +172,14 @@ void casual_read(int offset, char* out, int size) {
     free(buf);
 }
 
-void casual_write(int offset, char* input, int size) {
+int casual_write(int offset, char* input, int size) {
     if(input == NULL) {
         DBG("input指针为null，没法写");
         assert(input != NULL);
+        return -1;
+    }
+    if (offset < 0 || size <= 0) {
+        return -1;
     }
     int offset_for_ddriver = (offset / IO_SZ) * IO_SZ;
     int bias = offset - offset_for_ddriver;
@@ -187,10 +191,14 @@ void casual_write(int offset, char* input, int size) {
 
     ddriver_seek(super.fd, offset_for_ddriver, 0);
     for(int i = 0; i < iter; i++) {
-        ddriver_write(super.fd, input_dd + i * IO_SZ, IO_SZ);
+        if(ddriver_write(super.fd, input_dd + i * IO_SZ, IO_SZ) != 0) {
+            DBG("玩蛋\n");
+            return -1;
+        }
     }
 
     free(input_dd);
+    return 0;
 }
 
 void insert_dentry (struct nfs_inode* inode, nfs_dentry** dentry, FILE_TYPE ftype) {
@@ -344,8 +352,13 @@ void sync_bitmap_to_disk(nfs_inode* inode) {
         }
     }
     #else
-    casual_write(super.bitmap_inode_loc_d, (char*)(super.bitmap_inode), super.bitmap_inode_bnum * BLOCK_SZ);
-    casual_write(super.bitmap_data_loc_d, (char*)(super.bitmap_data), super.bitmap_data_bnum * BLOCK_SZ);
+    super.bitmap_data[0] = 0b11101110;
+    if(casual_write(super.bitmap_inode_loc_d, (char*)(super.bitmap_inode), super.bitmap_inode_bnum * BLOCK_SZ) != 0) {
+        DBG("随机写错误");
+    }
+    if(casual_write(super.bitmap_data_loc_d, (char*)(super.bitmap_data), super.bitmap_data_bnum * BLOCK_SZ) != 0) {
+        DBG("随机写错误");
+    }
     #endif
 }
 
@@ -480,6 +493,7 @@ int total_rebuilt_from_disk(nfs_super* super, nfs_super* super_disk, nfs_inode* 
     casual_read(super->bitmap_data_loc_d, (char*)(super->bitmap_data), super->bitmap_data_bnum * BLOCK_SZ);
     //read all dentry, construct trees in ram
     rebuilt_by_inode(root_inode, super);
+    super->is_mounted = 1;
     return 0;
 }
 
