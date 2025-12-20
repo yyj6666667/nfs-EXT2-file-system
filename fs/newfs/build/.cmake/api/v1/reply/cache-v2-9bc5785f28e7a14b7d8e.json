@@ -55,7 +55,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/home/benjamin/home-lab/fs-tem/fs/nfs/build"
+			"value" : "/home/benjamin/home-lab/fs-tem/fs/newfs/build"
 		},
 		{
 			"name" : "CMAKE_CACHE_MAJOR_VERSION",
@@ -167,10 +167,10 @@
 				},
 				{
 					"name" : "HELPSTRING",
-					"value" : "No help, variable specified on the command line."
+					"value" : "C compiler"
 				}
 			],
-			"type" : "FILEPATH",
+			"type" : "STRING",
 			"value" : "/usr/bin/gcc"
 		},
 		{
@@ -475,7 +475,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/home/benjamin/home-lab/fs-tem/fs/nfs"
+			"value" : "/home/benjamin/home-lab/fs-tem/fs/newfs"
 		},
 		{
 			"name" : "CMAKE_INSTALL_PREFIX",
@@ -719,7 +719,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "nfs"
+			"value" : "newfs"
 		},
 		{
 			"name" : "CMAKE_PROJECT_VERSION",
@@ -1106,7 +1106,7 @@
 			"value" : "/usr/lib/x86_64-linux-gnu/libfuse.so"
 		},
 		{
-			"name" : "nfs_BINARY_DIR",
+			"name" : "newfs_BINARY_DIR",
 			"properties" : 
 			[
 				{
@@ -1115,10 +1115,10 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/home/benjamin/home-lab/fs-tem/fs/nfs/build"
+			"value" : "/home/benjamin/home-lab/fs-tem/fs/newfs/build"
 		},
 		{
-			"name" : "nfs_IS_TOP_LEVEL",
+			"name" : "newfs_IS_TOP_LEVEL",
 			"properties" : 
 			[
 				{
@@ -1130,7 +1130,7 @@
 			"value" : "ON"
 		},
 		{
-			"name" : "nfs_SOURCE_DIR",
+			"name" : "newfs_SOURCE_DIR",
 			"properties" : 
 			[
 				{
@@ -1139,7 +1139,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/home/benjamin/home-lab/fs-tem/fs/nfs"
+			"value" : "/home/benjamin/home-lab/fs-tem/fs/newfs"
 		}
 	],
 	"kind" : "cache",

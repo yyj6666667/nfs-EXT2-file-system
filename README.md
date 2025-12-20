@@ -28,3 +28,4 @@ debug log:
 12.20
 ![alt text](image.png)
 * 随手安插dbg信息和返回数值， 真是血泪， debug 2h， 二分法一点点插入断点， dump bitmap对照。我觉得不可能在这种调用地方出错，结果就是在这里，机器不会骗人！
+* 示范代码的ddriver注释有问题， 仍然不清楚问题出在哪里, 确定ddriver_open返回fd正确， 确定dump bitmap出错

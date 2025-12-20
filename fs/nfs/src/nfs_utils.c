@@ -185,13 +185,14 @@ int casual_write(int offset, char* input, int size) {
     int bias = offset - offset_for_ddriver;
     int size_for_ddriver   = ((size + bias + IO_SZ - 1) / IO_SZ) * IO_SZ;
     int   iter = size_for_ddriver / IO_SZ;
-    char* input_dd         = (char*) malloc(size_for_ddriver);
+    char* input_dd         = (char*) calloc(1, size_for_ddriver);
     casual_read(offset_for_ddriver, input_dd, size_for_ddriver);
     memcpy(input_dd + bias, input, size);
 
     ddriver_seek(super.fd, offset_for_ddriver, 0);
     for(int i = 0; i < iter; i++) {
-        if(ddriver_write(super.fd, input_dd + i * IO_SZ, IO_SZ) != 0) {
+        int ddriver_return = ddriver_write(super.fd, input_dd + i * IO_SZ, IO_SZ);
+        if(ddriver_return != 0) {
             DBG("玩蛋\n");
             return -1;
         }

@@ -21,7 +21,7 @@
 	struct nfs_super super; 
 
 	//为了方便， 把全局变量单独定义
-
+	int      debug;
 	boolean  is_init;
 	struct nfs_inode* root_inode;
 	struct nfs_dentry* root_dentry;
@@ -90,6 +90,7 @@
 		/* TODO: 在这里进行挂载 */
 		//拿到总大小，方便分配位图
 		super.fd = ddriver_open(nfs_options.device);
+		printf("super.fd is %d\n", super.fd);
 		super.sz_io = 512;
 		super.sz_blk = BLOCK_SZ;
 		is_init = -1;

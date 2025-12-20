@@ -4,7 +4,7 @@
 # compile C with /usr/bin/gcc
 C_DEFINES = 
 
-C_INCLUDES = -I/home/benjamin/tem/user-land-filesystem/fs/newfs/./include
+C_INCLUDES = -I/home/benjamin/home-lab/fs-tem/fs/newfs/./include
 
 C_FLAGS =  -D_FILE_OFFSET_BITS=64 -no-pie -g -Wall --pedantic -g
 

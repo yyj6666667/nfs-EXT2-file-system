@@ -613,6 +613,8 @@ int newfs_driver_write(int offset, uint8_t *in_content, int size) {
     {
         // write(NEWFS_DRIVER(), cur, NEWFS_IO_SZ());
         ddriver_write(NEWFS_DRIVER(), cur, NEWFS_IO_SZ());
+        int d = NEWFS_IO_SZ();
+        printf("io_sz is : %d\n\n\n\n", d);
         cur          += NEWFS_IO_SZ();
         size_aligned -= NEWFS_IO_SZ();   
     }
