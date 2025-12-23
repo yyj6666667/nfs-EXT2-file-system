@@ -149,7 +149,7 @@
 			}
 		}
 
-		nfs_dump_bitmap();
+//		nfs_dump_bitmap();
 
 		//debug info
 		printf("bitmap inode map location in disk is : %d", super.bitmap_inode_loc_d);
@@ -349,8 +349,8 @@
 					char* p_data = parent->data + (parent->child_count - 1) * sizeof(nfs_dentry_d);
 					nfs_dentry_d dentry_d;
 					strcpy(dentry_d.name, target->name);
-					dentry_d.ino  = target.ino;
-					dentry_d.ftype = target.ftype;
+					dentry_d.ino  = target->ino;
+					dentry_d.ftype = target->ftype;
 					memcpy(p_data, &dentry_d, sizeof(nfs_dentry_d));
 					parent->size += sizeof(nfs_dentry_d);
 					break;

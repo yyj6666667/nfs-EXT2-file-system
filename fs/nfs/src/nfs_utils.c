@@ -515,7 +515,7 @@ nfs_inode* restore_inode(nfs_dentry* dentry, int ino) {
     inode->child_count = inode_d.child_count;
     inode->data = (uint8_t*) calloc(1, DATABLOCK_PER_INODE * BLOCK_SZ);
     char* disk_data = read_inode_data_disk(&super, ino);
-    memcpy(inode->data, disk_data, DATABLOCK_PER_INDOE * BLOCK_SZ);
+    memcpy(inode->data, disk_data, DATABLOCK_PER_INODE * BLOCK_SZ);
     free(disk_data);
     return inode;
 }
