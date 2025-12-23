@@ -220,7 +220,7 @@
 			char* fname = get_fname(path);
 			strcpy(new_null->name, fname);
 			alloc_inode(new_null);
-			char *target = parent->data + parent->dir_count * sizeof(nfs_dentry_d);
+			char *target = parent->data + (parent->child_count - 1) * sizeof(nfs_dentry_d);
 			nfs_dentry_d dentry_d;
 			strcpy(dentry_d.name, new_null->name); 
 			dentry_d.ino = new_null->ino;
@@ -254,7 +254,7 @@
 		}
 		if (IS_DIR(dentry->inode)) {
 			nfs_stat->st_mode = S_IFDIR | NFS_DEFAULT_PERM;
-			nfs_stat->st_size = dentry->inode->dir_count * sizeof( nfs_dentry);
+			nfs_stat->st_size = dentry->inode->child_count * sizeof( nfs_dentry);
 		}
 		else if (IS_REG(dentry->inode)) {
 			nfs_stat->st_mode = S_IFREG | NFS_DEFAULT_PERM;
@@ -344,6 +344,15 @@
 					insert_dentry(parent, &target, REG);
 					strcpy(target->name, filename);
 					alloc_inode(target);
+
+					//更新parent data
+					char* p_data = parent->data + (parent->child_count - 1) * sizeof(nfs_dentry_d);
+					nfs_dentry_d dentry_d;
+					strcpy(dentry_d.name, target->name);
+					dentry_d.ino  = target.ino;
+					dentry_d.ftype = target.ftype;
+					memcpy(p_data, &dentry_d, sizeof(nfs_dentry_d));
+					parent->size += sizeof(nfs_dentry_d);
 					break;
 				}
 				case __S_IFDIR: {

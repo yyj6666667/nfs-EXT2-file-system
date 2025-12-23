@@ -64,7 +64,7 @@ typedef struct nfs_inode {
     int      size;
     struct nfs_dentry* dentry_self;
     struct nfs_dentry* dentry_sons;
-    int      dir_count;
+    int      child_count;
 
     uint8_t* data;
 }nfs_inode;
@@ -82,7 +82,7 @@ typedef struct nfs_dentry {
 typedef struct {
     int ino;
     int size;//file's byte size
-    int dir_count;
+    int child_count;
     int direct_data[DATABLOCK_PER_INODE];//块号
 }nfs_inode_d;
 

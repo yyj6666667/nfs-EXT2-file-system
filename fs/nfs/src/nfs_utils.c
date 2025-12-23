@@ -199,7 +199,7 @@ int casual_write(int offset, char* input, int size) {
 
 void insert_dentry (struct nfs_inode* inode, nfs_dentry** dentry, FILE_TYPE ftype) {
     //分配创建,不知道这种大包大揽好不好哈哈哈哈哈哈
-    *dentry = (nfs_dentry*) malloc(sizeof(nfs_dentry));
+    *dentry = (nfs_dentry*) calloc(1, sizeof(nfs_dentry));
     (*dentry)->ftype = ftype;
     (*dentry)->parent = inode->dentry_self;
     (*dentry)->brother = NULL;
@@ -207,7 +207,7 @@ void insert_dentry (struct nfs_inode* inode, nfs_dentry** dentry, FILE_TYPE ftyp
     //附加到parent上
     (*dentry)->brother = inode->dentry_sons;
     inode->dentry_sons = *dentry;
-    inode->dir_count += 1;
+    inode->child_count += 1;
 }
 
 void remove_dentry (nfs_inode* inode, nfs_dentry* dentry) {
@@ -217,14 +217,14 @@ void remove_dentry (nfs_inode* inode, nfs_dentry* dentry) {
     if (tem == NULL) return;
     if (tem == dentry) {
         inode->dentry_sons = tem->brother;
-        inode->dir_count -= 1;
+        inode->child_count -= 1;
         return;
     }
     if (tem != NULL && tem != dentry) {
         while (tem->brother != NULL) {
             if(tem->brother == dentry) {
                 tem->brother = dentry->brother;
-                inode->dir_count -= 1;
+                inode->child_count -= 1;
                 return;
             }
             tem = tem->brother;
@@ -258,7 +258,7 @@ nfs_inode* alloc_inode(nfs_dentry* dentry) {
         dentry->inode = new;
         new->dentry_self = dentry;
         new->dentry_sons = NULL;
-        new->dir_count = 0;
+        new->child_count = 0;
         new->data = (uint8_t*) calloc(1, DATABLOCK_PER_INODE * BLOCK_SZ);
         return new;
     } else {
@@ -297,7 +297,7 @@ void sync_inode_to_disk(nfs_inode *inode) {
     nfs_inode_d* buf_tem = (nfs_inode_d*) calloc(1, sizeof(nfs_inode_d));
     buf_tem->size = inode->size;
     buf_tem->ino  = inode->ino;
-    buf_tem->dir_count = inode->dir_count;
+    buf_tem->child_count = inode->child_count;
     for (int i = inode->ino * DATABLOCK_PER_INODE, j = 0; 
         j < DATABLOCK_PER_INODE; j++, i++) {
             *(buf_tem->direct_data + j) = i;
@@ -455,10 +455,10 @@ int rebuilt_by_inode(nfs_inode* inode, nfs_super* super){
     switch(inode->dentry_self->ftype) {
         case DIR : {
             int check_num = inode->size / sizeof(nfs_dentry_d);
-            if (check_num == inode->dir_count || 1) {
+            if (check_num == inode->child_count || 1) {
                 char* data = read_inode_data_disk(super, inode->ino);
                 nfs_dentry_d* iter = (nfs_dentry_d*) data;
-                for (int i = 0; i < inode->dir_count; i++) {
+                for (int i = 0; i < inode->child_count; i++) {
                     nfs_dentry* dentry_to_add = new_dentry(iter->name, iter->ftype);
                     //debug
                     printf("重建时从磁盘中获取的名字：%s\n", iter->name);
@@ -476,7 +476,7 @@ int rebuilt_by_inode(nfs_inode* inode, nfs_super* super){
                 //调用深了有堆溢出风险哈哈哈
                 free(data);
             } else {
-                DBG("inode's size don't match its dir_count\n");
+                DBG("inode's size don't match its child_count\n");
                 return -1;
             }
             break;
@@ -512,8 +512,11 @@ nfs_inode* restore_inode(nfs_dentry* dentry, int ino) {
     int loc = inode_loc_in_disk(inode);
     casual_read(loc, (char*)&inode_d, sizeof(nfs_inode_d));
     inode->size = inode_d.size;
-    inode->dir_count = inode_d.dir_count;
+    inode->child_count = inode_d.child_count;
     inode->data = (uint8_t*) calloc(1, DATABLOCK_PER_INODE * BLOCK_SZ);
+    char* disk_data = read_inode_data_disk(&super, ino);
+    memcpy(inode->data, disk_data, DATABLOCK_PER_INDOE * BLOCK_SZ);
+    free(disk_data);
     return inode;
 }
 
