@@ -41,17 +41,17 @@
 		.getattr = nfs_getattr,				 /* 获取文件属性，类似stat，必须完成 */
 		.readdir = nfs_readdir,				 /* 填充dentrys */
 		.mknod = nfs_mknod,					 /* 创建文件，touch相关 */
-		.write = NULL,								  	 /* 写入文件 */
-		.read = NULL,								  	 /* 读文件 */
+		.write = nfs_write,								  	 /* 写入文件 */
+		.read = nfs_read,								  	 /* 读文件 */
 		.utimens = nfs_utimens,				 /* 修改时间，忽略，避免touch报错 */
-		.truncate = NULL,						  		 /* 改变文件大小 */
-		.unlink = NULL,							  		 /* 删除文件 */
-		.rmdir	= NULL,							  		 /* 删除目录， rm -r */
-		.rename = NULL,							  		 /* 重命名，mv */
+		.truncate = nfs_truncate,						  		 /* 改变文件大小 */
+		.unlink = nfs_unlink,							  		 /* 删除文件 */
+		.rmdir	= nfs_rmdir,							  		 /* 删除目录， rm -r */
+		.rename = nfs_rename,							  		 /* 重命名，mv */
 
-		.open = NULL,							
-		.opendir = NULL,
-		.access = NULL
+		.open = nfs_open,							
+		.opendir = nfs_opendir,
+		.access = nfs_access
 	};
 	/*
 	┌──────────────────────────────────────────────────┐
@@ -404,6 +404,30 @@
 	int nfs_write(const char* path, const char* buf, size_t size, off_t offset,
 					struct fuse_file_info* fi) {
 		/* 选做 */
+		boolean is_found = 0;
+		nfs_dentry* found = general_find(path, &is_found, root_dentry);
+		if (is_found == 1) {
+			if (found->ftype == REG) {
+				nfs_inode* target = found->inode;
+				char* start_point = target->data + offset;
+				//debug
+				 if(target->size == 0) {
+				 	DBG("这是reg文件的data第一次写\n");
+				 } else {
+				 	DBG("这是继续往reg文件里面写， 穿插打印信息 在这里， 因为很可能出错\n");
+				 }
+				target->size = offset + size;
+				memcpy(start_point, buf, size);
+				sync_inode_to_disk(target);
+			} else {
+				DBG("nfs_write: 找是找到了， 不是reg没法给你写\n");
+				return -1;
+			}
+		} else {
+			DBG("nfs_write: 没找到\n");
+			return -1;
+		}
+
 		return size;
 	}
 
@@ -420,7 +444,35 @@
 	int nfs_read(const char* path, char* buf, size_t size, off_t offset,
 				struct fuse_file_info* fi) {
 		/* 选做 */
-		return size;			   
+		boolean is_found = 0;
+		nfs_dentry* found = general_find(path, &is_found, root_dentry);
+		if (is_found == 0) {
+			DBG("nfs_read: file not found\n");
+			return -ENOENT;
+		}
+		if (found->ftype != REG) {
+			DBG("nfs_read: not a reg file\n");
+			return -EISDIR;
+		}
+
+		if (offset + size <= DATABLOCK_PER_INODE * BLOCK_SZ) {
+			//reg data在之前的实现中， 是懒加载
+			//可以从磁盘当中读， nfs_write保证了立刻写入磁盘
+			nfs_inode* reg_inode = found->inode;
+			//原来的found 已经分配inode， 需要懒加载的只是data
+			if (reg_inode->data == NULL) {
+				//case 1: not loaded before
+				//case 2: file is empty
+				//solution: loaded from disk anyway
+				reg_inode->data = read_inode_data_disk(reg_inode->ino);
+			}
+			char* data_target = reg_inode->data + offset;
+			memcpy(buf, data_target, size);
+			return size;
+		} else {
+			DBG("nfs_read:没找到\n");
+			return -ENOENT;
+		}		   
 	}
 
 	/**

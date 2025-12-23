@@ -437,14 +437,14 @@ nfs_dentry* general_find (const char* path, boolean* is_found, nfs_dentry* root_
 /**
  * @brief 根据ino， 读取disk中的data段到buf， 返回buf指针
  */
-char* read_inode_data_disk(nfs_super* super, int ino){
-    int loc_d = super->data_loc_d + ino * DATABLOCK_PER_INODE * BLOCK_SZ;
+char* read_inode_data_disk(int ino){
+    int loc_d = super.data_loc_d + ino * DATABLOCK_PER_INODE * BLOCK_SZ;
     char* buf = (char*) calloc(DATABLOCK_PER_INODE, BLOCK_SZ);
 
-    ddriver_seek(super->fd, loc_d, 0);
+    ddriver_seek(super.fd, loc_d, 0);
     int read_times = DATABLOCK_PER_INODE * BLOCK_SZ / IO_SZ;
     for (int i = 0; i < read_times; i++)
-        ddriver_read(super->fd, buf + i * IO_SZ, IO_SZ);
+        ddriver_read(super.fd, buf + i * IO_SZ, IO_SZ);
     return buf;
 }
 
@@ -456,7 +456,7 @@ int rebuilt_by_inode(nfs_inode* inode, nfs_super* super){
         case DIR : {
             int check_num = inode->size / sizeof(nfs_dentry_d);
             if (check_num == inode->child_count || 1) {
-                char* data = read_inode_data_disk(super, inode->ino);
+                char* data = read_inode_data_disk(inode->ino);
                 nfs_dentry_d* iter = (nfs_dentry_d*) data;
                 for (int i = 0; i < inode->child_count; i++) {
                     nfs_dentry* dentry_to_add = new_dentry(iter->name, iter->ftype);
@@ -514,7 +514,7 @@ nfs_inode* restore_inode(nfs_dentry* dentry, int ino) {
     inode->size = inode_d.size;
     inode->child_count = inode_d.child_count;
     inode->data = (uint8_t*) calloc(1, DATABLOCK_PER_INODE * BLOCK_SZ);
-    char* disk_data = read_inode_data_disk(&super, ino);
+    char* disk_data = read_inode_data_disk(ino);
     memcpy(inode->data, disk_data, DATABLOCK_PER_INODE * BLOCK_SZ);
     free(disk_data);
     return inode;
