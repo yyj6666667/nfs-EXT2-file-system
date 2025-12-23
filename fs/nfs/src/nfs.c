@@ -122,7 +122,6 @@
 			//alloc root inode and dentry
 				//哈哈， 实际上这里的变量root_dentry是一个引子变量
 				root_inode = alloc_inode(root_dentry);
-				assert(root_inode->ino == 0);
 
 				nfs_dentry_d* root_dentry_d = (nfs_dentry_d*) calloc(1, sizeof(nfs_dentry_d));
 				strcpy(root_dentry_d->name, root_dentry->name);
@@ -150,10 +149,17 @@
 			}
 		}
 
+		nfs_dump_bitmap();
+
 		//debug info
 		printf("bitmap inode map location in disk is : %d", super.bitmap_inode_loc_d);
 
 		printf("打印启动信息");
+		if (is_init == 0) {
+			printf("\nremount\n");
+		} else {
+			printf("\n first load\n");
+		}
 		printf("super_blk = %d, bitmap_blk = %d, bitmap_blk2 = %d, inode_blk = %d, data_blk = %d",
 						1,
 						super.bitmap_inode_bnum,
@@ -180,6 +186,8 @@
 		//debug: 检测是否真的写进去了
 		nfs_super* tem = calloc(1, sizeof(nfs_super));
 		casual_read(0, (char*)tem, sizeof(nfs_super));
+
+		nfs_dump_bitmap();
 
 
 		free_inode(root_dentry);
@@ -212,6 +220,13 @@
 			char* fname = get_fname(path);
 			strcpy(new_null->name, fname);
 			alloc_inode(new_null);
+			char *target = parent->data + parent->dir_count * sizeof(nfs_dentry_d);
+			nfs_dentry_d dentry_d;
+			strcpy(dentry_d.name, new_null->name); 
+			dentry_d.ino = new_null->ino;
+			dentry_d.ftype = new_null->ftype; 				 // 其实这里可以换成ram_and_disk_trans
+			memcpy(target, &dentry_d, sizeof(nfs_dentry_d)); //这里连续着储存，其实有点危险
+			parent->size += sizeof(nfs_dentry_d);
 			//不知道够不够
 		}
 		return 0;

@@ -25,5 +25,7 @@ nfs_dentry* general_find(const char* path, boolean* is_found, nfs_dentry* root_d
 int total_rebuilt_from_disk(nfs_super* super_ram, nfs_super* super_disk, nfs_inode* root_inode);
 nfs_inode* restore_inode(nfs_dentry* dentry, int ino);
 
+int ram_and_disk_trans(boolean flag, nfs_dentry* dentry, nfs_inode* inode);
+
 
 #endif /* _UTILS_H_ */

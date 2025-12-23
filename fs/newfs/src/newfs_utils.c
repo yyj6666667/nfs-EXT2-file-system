@@ -412,7 +412,8 @@ int newfs_umount() {
                      sizeof(struct newfs_super_d)) != NEWFS_ERROR_NONE) {
         return -NEWFS_ERROR_IO;
     }
-
+    printf("dump one: after super\n");
+    newfs_dump_map();
     if (newfs_driver_write(newfs_super_d.map_inode_offset, (uint8_t *)(newfs_super.map_inode), 
                          NEWFS_BLKS_SZ(newfs_super_d.map_inode_blks)) != NEWFS_ERROR_NONE) {
         return -NEWFS_ERROR_IO;
@@ -422,7 +423,7 @@ int newfs_umount() {
                          NEWFS_BLKS_SZ(newfs_super_d.map_data_blks)) != NEWFS_ERROR_NONE) {
         return -NEWFS_ERROR_IO;
     }
-
+    
     free(newfs_super.map_inode);
     free(newfs_super.map_data);
     ddriver_close(NEWFS_DRIVER()); 

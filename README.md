@@ -29,3 +29,14 @@ debug log:
 ![alt text](image.png)
 * 随手安插dbg信息和返回数值， 真是血泪， debug 2h， 二分法一点点插入断点， dump bitmap对照。我觉得不可能在这种调用地方出错，结果就是在这里，机器不会骗人！
 * 示范代码的ddriver注释有问题， 仍然不清楚问题出在哪里, 确定ddriver_open返回fd正确， 确定dump bitmap出错
+* 离谱， 在cqh的代码上也dump不了， 没法debug就没法确定问题， 离谱了
+* 使用dump_map过后， 根本没有变化， 真离谱
+* 现在我猜测， 是成功写进去了的， 就是inode bit = 3的问题， 本来应该等于2
+---
+12.23
+* 添加了bitmap_dump函数， 直接用现成的轮子就是爽啊
+* 果然bitmap的init and remount write/read 都是没有问题的
+* 无法重新ls上一次创建的文件
+* 找到了 nfs_utils.c:454 checknum 错误！ 错了没有添加打印信息， 真是血泪， 没有添加信息更为闹心
+* 找到问题, alloc inode 的时候， dentry->ino恒为0
+* 原来是mkdir时候， 除了维护ram中的树结构， 还要维护inode的data（注意以dentry_d）格式写入， sync时才会成功刷回磁盘

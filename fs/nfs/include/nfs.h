@@ -47,4 +47,10 @@ int   			   nfs_truncate(const char *, off_t);
 int   			   nfs_open(const char *, struct fuse_file_info *);
 int   			   nfs_opendir(const char *, struct fuse_file_info *);
 
+/******
+ *  section: nfs_debug.c
+ */
+
+void nfs_dump_bitmap();
+
 #endif  /* _nfs_H_ */

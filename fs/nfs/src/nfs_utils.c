@@ -191,13 +191,8 @@ int casual_write(int offset, char* input, int size) {
 
     ddriver_seek(super.fd, offset_for_ddriver, 0);
     for(int i = 0; i < iter; i++) {
-        int ddriver_return = ddriver_write(super.fd, input_dd + i * IO_SZ, IO_SZ);
-        if(ddriver_return != 0) {
-            DBG("玩蛋\n");
-            return -1;
-        }
+        ddriver_write(super.fd, input_dd + i * IO_SZ, IO_SZ);
     }
-
     free(input_dd);
     return 0;
 }
@@ -258,12 +253,13 @@ nfs_inode* alloc_inode(nfs_dentry* dentry) {
         nfs_inode* new = (nfs_inode*) calloc(1, sizeof(nfs_inode));
         new->ino = ino_cursor;
         dentry->ino = new->ino;
+         printf("给新的dentry分配的ino号为：%d\n", dentry->ino);
         new->size = 0;
         dentry->inode = new;
         new->dentry_self = dentry;
         new->dentry_sons = NULL;
         new->dir_count = 0;
-        new->data = (uint8_t*) malloc(DATABLOCK_PER_INODE * BLOCK_SZ);
+        new->data = (uint8_t*) calloc(1, DATABLOCK_PER_INODE * BLOCK_SZ);
         return new;
     } else {
         DBG("没有空闲inode，分配失败");
@@ -298,7 +294,7 @@ void sync_inode_to_disk(nfs_inode *inode) {
         return;
     }
 
-    nfs_inode_d* buf_tem = (nfs_inode_d*) malloc(sizeof(nfs_inode_d));
+    nfs_inode_d* buf_tem = (nfs_inode_d*) calloc(1, sizeof(nfs_inode_d));
     buf_tem->size = inode->size;
     buf_tem->ino  = inode->ino;
     buf_tem->dir_count = inode->dir_count;
@@ -312,6 +308,7 @@ void sync_inode_to_disk(nfs_inode *inode) {
     //写数据
     int data_blk_id = (buf_tem->direct_data)[0];
     int data_loc_disk = data_loc_in_disk(data_blk_id);
+    printf("把数据写到地址: %d \n", data_loc_disk);
     casual_write(data_loc_disk, (char*)inode->data, BLOCK_SZ * DATABLOCK_PER_INODE);   
     free(buf_tem);
 
@@ -407,7 +404,7 @@ void free_super_ram() {
 //
 
 /**
- * 抄袭板
+ * 借鉴板
  */
 nfs_dentry* general_find (const char* path, boolean* is_found, nfs_dentry* root_dentry) {
     *is_found = 0;
@@ -445,7 +442,9 @@ char* read_inode_data_disk(nfs_super* super, int ino){
     char* buf = (char*) calloc(DATABLOCK_PER_INODE, BLOCK_SZ);
 
     ddriver_seek(super->fd, loc_d, 0);
-    ddriver_read(super->fd, buf, DATABLOCK_PER_INODE * BLOCK_SZ);
+    int read_times = DATABLOCK_PER_INODE * BLOCK_SZ / IO_SZ;
+    for (int i = 0; i < read_times; i++)
+        ddriver_read(super->fd, buf + i * IO_SZ, IO_SZ);
     return buf;
 }
 
@@ -456,11 +455,13 @@ int rebuilt_by_inode(nfs_inode* inode, nfs_super* super){
     switch(inode->dentry_self->ftype) {
         case DIR : {
             int check_num = inode->size / sizeof(nfs_dentry_d);
-            if (check_num == inode->dir_count) {
+            if (check_num == inode->dir_count || 1) {
                 char* data = read_inode_data_disk(super, inode->ino);
                 nfs_dentry_d* iter = (nfs_dentry_d*) data;
                 for (int i = 0; i < inode->dir_count; i++) {
                     nfs_dentry* dentry_to_add = new_dentry(iter->name, iter->ftype);
+                    //debug
+                    printf("重建时从磁盘中获取的名字：%s\n", iter->name);
                     dentry_to_add->parent = inode->dentry_self;
                     //头结点插入
                     dentry_to_add->brother = inode->dentry_sons;
@@ -474,6 +475,9 @@ int rebuilt_by_inode(nfs_inode* inode, nfs_super* super){
                 }
                 //调用深了有堆溢出风险哈哈哈
                 free(data);
+            } else {
+                DBG("inode's size don't match its dir_count\n");
+                return -1;
             }
             break;
         }

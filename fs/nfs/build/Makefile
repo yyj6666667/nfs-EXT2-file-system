@@ -153,6 +153,30 @@ src/nfs.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/nfs.dir/build.make CMakeFiles/nfs.dir/src/nfs.c.s
 .PHONY : src/nfs.c.s
 
+src/nfs_debug.o: src/nfs_debug.c.o
+.PHONY : src/nfs_debug.o
+
+# target to build an object file
+src/nfs_debug.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/nfs.dir/build.make CMakeFiles/nfs.dir/src/nfs_debug.c.o
+.PHONY : src/nfs_debug.c.o
+
+src/nfs_debug.i: src/nfs_debug.c.i
+.PHONY : src/nfs_debug.i
+
+# target to preprocess a source file
+src/nfs_debug.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/nfs.dir/build.make CMakeFiles/nfs.dir/src/nfs_debug.c.i
+.PHONY : src/nfs_debug.c.i
+
+src/nfs_debug.s: src/nfs_debug.c.s
+.PHONY : src/nfs_debug.s
+
+# target to generate assembly for a file
+src/nfs_debug.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/nfs.dir/build.make CMakeFiles/nfs.dir/src/nfs_debug.c.s
+.PHONY : src/nfs_debug.c.s
+
 src/nfs_utils.o: src/nfs_utils.c.o
 .PHONY : src/nfs_utils.o
 
@@ -189,6 +213,9 @@ help:
 	@echo "... src/nfs.o"
 	@echo "... src/nfs.i"
 	@echo "... src/nfs.s"
+	@echo "... src/nfs_debug.o"
+	@echo "... src/nfs_debug.i"
+	@echo "... src/nfs_debug.s"
 	@echo "... src/nfs_utils.o"
 	@echo "... src/nfs_utils.i"
 	@echo "... src/nfs_utils.s"
