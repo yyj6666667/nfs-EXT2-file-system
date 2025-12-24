@@ -190,7 +190,7 @@
 		nfs_dump_bitmap();
 
 
-		free_inode(root_dentry);
+		free_inode_recursively_ram(root_dentry);
 		ddriver_close(super.fd);
 
 		free_super_ram();
@@ -304,11 +304,8 @@
 		boolean is_found = 0;
 		nfs_dentry* potential_res = general_find(path, &is_found, root_dentry);
 		if (is_found == 1 && potential_res != NULL) {
-			/*
-			实际系统中：
 			filler(buf, ".", NULL, 0);
 			filler(buf, "..", NULL, 0);
-			*/
 			//给出子目录
 			nfs_inode* parent = potential_res->inode;
 			nfs_dentry* iter = parent->dentry_sons;
@@ -483,6 +480,7 @@
 	 */
 	int nfs_unlink(const char* path) {
 		/* 选做 */
+		nfs_rmdir(path);
 		return 0;
 	}
 
@@ -500,6 +498,17 @@
 	 */
 	int nfs_rmdir(const char* path) {
 		/* 选做 */
+		//磁盘中的数据不用管， ram区清理干净即可
+		boolean is_found = 0;
+		nfs_dentry* found = general_find(path, &is_found, root_dentry);
+		if (is_found == 0) {
+			DBG("rmdir: no such dir\n");
+			return -1;
+		}
+
+		free_inode_recursively_ram(found);
+		//bitmap修改
+
 		return 0;
 	}
 

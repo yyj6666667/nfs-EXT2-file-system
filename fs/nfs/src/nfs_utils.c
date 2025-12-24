@@ -209,28 +209,59 @@ void insert_dentry (struct nfs_inode* inode, nfs_dentry** dentry, FILE_TYPE ftyp
     inode->dentry_sons = *dentry;
     inode->child_count += 1;
 }
-
+/**
+ * @param inode : dentry's parent inode
+ */
 void remove_dentry (nfs_inode* inode, nfs_dentry* dentry) {
-    if (inode == NULL) 
-        return;
-    nfs_dentry* tem = inode->dentry_sons;
-    if (tem == NULL) return;
-    if (tem == dentry) {
-        inode->dentry_sons = tem->brother;
-        inode->child_count -= 1;
+    if (inode == NULL) {
+        DBG("remove_dentry: parent inode not founded\n");
         return;
     }
-    if (tem != NULL && tem != dentry) {
-        while (tem->brother != NULL) {
-            if(tem->brother == dentry) {
-                tem->brother = dentry->brother;
+
+    nfs_dentry* tem = inode->dentry_sons;
+    nfs_dentry* prev = NULL;
+
+    if (tem == NULL) {
+        DBG("remove_dentry: supposed dentry not found\n");
+        return;
+    }
+    for(; tem != NULL; prev = tem, tem = tem->brother) {
+        if (tem == dentry) {
+            if (prev == NULL) {
+                //在头结点就找到了
+                inode->dentry_sons = tem->brother;
                 inode->child_count -= 1;
-                return;
+                break;
+            } else {
+                prev->brother = tem->brother;
+                inode->child_count -= 1;
+                break;
             }
-            tem = tem->brother;
         }
     }
-    DBG("根本没找到，remove_dentry 失败");
+
+    //one dentry refers to an inode, so inode bitmap change:
+    int cursor = dentry->ino;
+    int byte   = cursor / 8;
+    uint8_t mask = 0b1 << (7 - cursor % 8);
+    uint8_t origin  = super.bitmap_inode[byte];
+    if ((mask & origin) == 0) {
+        DBG("remove_dentry: 原始map inode有错\n");
+        return;
+    }
+    uint8_t now = origin & (~mask);
+    super.bitmap_inode[byte] = now;
+
+    char string[100];
+    strcpy(string, dentry->name);
+    //free
+    free(dentry);
+    if (dentry->inode){
+        free(dentry->inode);
+        if (dentry->inode->data)
+            free(dentry->inode->data);
+    }
+    printf("remove_dentry: ops is done， %s 已经成功释放\n", string);
 }
 
 nfs_inode* alloc_inode(nfs_dentry* dentry) {
@@ -268,8 +299,11 @@ nfs_inode* alloc_inode(nfs_dentry* dentry) {
 }
 
 
-//香香了
-void free_inode(nfs_dentry* dentry) {
+/**
+ * @brief this func is both used in destroy() and rmdir(), it can change the bitmap, which may cause danger to bitmap_sync, but the code order in nfs.c avoid this danger
+ */
+void free_inode_recursively_ram(nfs_dentry* dentry) {
+    
     nfs_inode* inode = dentry->inode;
     //检查是否到递归的最后一层    
     if(inode->dentry_sons != NULL) {
@@ -277,14 +311,12 @@ void free_inode(nfs_dentry* dentry) {
         nfs_dentry* iter = inode->dentry_sons;
         while (iter != NULL) {
             nfs_dentry* next = iter->brother;
-            free_inode(iter);
+            free_inode_recursively_ram(iter);
             iter = next;
         }
     }
-    remove_dentry(dentry->parent, inode->dentry_self);
-    free(dentry);
-    free(inode->data);
-    free(inode);
+    if (dentry->parent != NULL)
+        remove_dentry(dentry->parent->inode, dentry);
     return;
 }
 

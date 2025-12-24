@@ -16,7 +16,7 @@ int casual_write(int offset, char* input, int size);
 void insert_dentry (struct nfs_inode* inode, nfs_dentry** dentry, FILE_TYPE ftype);
 void remove_dentry (struct nfs_inode* inode, nfs_dentry* dentry);
 nfs_inode* alloc_inode(nfs_dentry* dentry);
-void free_inode(nfs_dentry* dentry);
+void free_inode_recursively_ram(nfs_dentry* dentry);
 void sync_inode_to_disk(nfs_inode *inode);
 void sync_bitmap_to_disk(nfs_inode* inode);
 void sync_super_to_disk();

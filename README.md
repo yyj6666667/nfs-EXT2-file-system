@@ -50,3 +50,5 @@ debug log:
 ![alt text](image-1.png)
 
 * new bug by gdb: nfs_read's restore_inode will replace inode already exists!!
+* remove_dentry add more duty: not only release link relation, also free dentry and its pointing inode space
+* add func "rm -r" and "rm"
