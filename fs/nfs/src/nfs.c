@@ -182,17 +182,21 @@
 		/* TODO: 在这里进行卸载 */
 		//oper for safe: last sync
 		super.is_mounted = 0;
-		sync_inode_to_disk(root_inode); 
 		#ifdef DEBUG
-			nfs_dentry_d *check_0_0 = NULL, *check_0_1 = NULL;
+			nfs_dentry_d *check_0_0 = NULL;
 			char*   	  temp_0_0  = (char*) calloc(1, sizeof(nfs_dentry_d));
-			char*   	  temp_0_1  = (char*) calloc(1, sizeof(nfs_dentry_d));
 			casual_read(super.data_loc_d, temp_0_0, sizeof(nfs_dentry_d));
-			casual_read(super.data_loc_d, temp_0_1, BLK_INODE * BLK_SZ);
 			check_0_0 = (nfs_dentry_d*) temp_0_0;
-			check_0_1 = (nfs_dentry_d*) temp_0_1;
 			printf("debug 穿插的第一个信息点\n");
 		#endif
+		sync_inode_to_disk(root_inode); 
+		//#ifdef DEBUG
+		//	nfs_dentry_d  *check_0_1 = NULL;
+		//	char*   	  temp_0_1  = (char*) calloc(1, sizeof(nfs_dentry_d));
+		//	casual_read(super.data_loc_d, temp_0_1, BLK_INODE * BLK_SZ);
+		//	check_0_1 = (nfs_dentry_d*) temp_0_1;
+		//	printf("debug 穿插的第二个信息点\n");
+		//#endif
 		sync_bitmap_to_disk(NULL);
 		sync_super_to_disk();
 		//debug: 检测是否真的写进去了

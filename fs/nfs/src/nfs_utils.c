@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../include/nfs_utils.h"
-#define DEBUG_UTILS
+//#define DEBUG_UTILS
 
 
 //#define UGLY
@@ -177,8 +177,23 @@ int casual_write(int offset, char* input, int size) {
     memcpy(input_dd + bias, input, size);
 
     ddriver_seek(super.fd, offset_for_ddriver, 0);
+    // if size is too large , print the process percent
+    boolean print_flag = 0;
+    int point[10];
+    if (size >= BLK_SZ * 10) {
+        print_flag = 1;
+        if (print_flag) {
+            for (int j = 0; j < 9; j++) {
+                point[j] = iter / 10 * j;
+            }
+        }
+    }
+    printf("casual_write: writing data of size: %d\n", size);
     for(int i = 0; i < iter; i++) {
         ddriver_write(super.fd, input_dd + i * IO_SZ, IO_SZ);
+        if (print_flag) {
+            printf(". ");
+        }
     }
     free(input_dd);
     return 0;
@@ -317,13 +332,13 @@ void sync_inode_to_disk(nfs_inode *inode) {
     inode_buf->size = inode->size;
     inode_buf->ino  = inode->ino;
     inode_buf->child_count = inode->child_count;
-    for (int i = inode->ino * BLK_INODE, j = 0; 
-        j < BLK_INODE; j++, i++) {
-            *(inode_buf->direct_data + j) = i;
-        }
-    int loc_in_disk = inode_loc_in_disk(inode);
+ //  for (int i = inode->ino * BLK_INODE, j = 0; 
+ //      j < BLK_INODE; j++, i++) {
+ //          *(inode_buf->direct_data + j) = i;
+ //      }
+    int inode_loc_d = inode_loc_in_disk(inode);
     //写inode
-    casual_write(loc_in_disk, (char*)inode_buf, sizeof(nfs_inode_d));
+    casual_write(inode_loc_d, (char*)inode_buf, sizeof(nfs_inode_d));
     //写数据
     int data_loc_disk = data_loc_in_disk(inode);
     printf("把数据写到地址: %d \n", data_loc_disk);
@@ -331,7 +346,7 @@ void sync_inode_to_disk(nfs_inode *inode) {
         nfs_dentry_d* check_0 = (nfs_dentry_d*) inode->data;
         if (check_0->ftype == DIR) ;
     #endif
-    casual_write(data_loc_disk, inode->data, BLK_SZ * BLK_INODE);   
+    casual_write(data_loc_disk, inode->data, inode->size);   
 
     #ifdef DEBUG_UTILS
         nfs_dentry_d* check_1 = NULL;
