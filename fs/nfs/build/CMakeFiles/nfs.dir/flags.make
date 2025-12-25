@@ -4,7 +4,7 @@
 # compile C with /usr/bin/gcc
 C_DEFINES = 
 
-C_INCLUDES = -I/home/benjamin/home-lab/fs-tem/fs/nfs/./include
+C_INCLUDES = -I/home/benjamin/home-lab/refer/ext2-model/fs/nfs/./include
 
 C_FLAGS =  -D_FILE_OFFSET_BITS=64 -no-pie -g -Wall --pedantic -g
 

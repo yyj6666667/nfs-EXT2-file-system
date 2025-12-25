@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #define MAX_NAME_LEN    128     
-//extern const int DATABLOCK_PER_INODE;
+//extern const int BLK_INODE;
 
 typedef enum {
     REG,
@@ -65,25 +65,26 @@ typedef struct nfs_inode {
     struct nfs_dentry* dentry_self;
     struct nfs_dentry* dentry_sons;
     int      child_count;
-
     uint8_t* data;
+    int pointer[BLK_INODE];
 }nfs_inode;
 
 typedef struct nfs_dentry {
     char     name[MAX_NAME_LEN];
     uint32_t ino;
-    /* TODO: Define yourself */
+    FILE_TYPE          ftype;
+    /* specific in ram */
     struct nfs_dentry* parent;
     struct nfs_dentry* brother;
     struct nfs_inode*  inode;
-    FILE_TYPE          ftype;
+    
 } nfs_dentry;
 
 typedef struct {
     int ino;
     int size;//file's byte size
     int child_count;
-    int direct_data[DATABLOCK_PER_INODE];//块号
+    int pointer[BLK_INODE];//块号
 }nfs_inode_d;
 
 

@@ -5,7 +5,7 @@ void nfs_dump_bitmap() {
     int byte_cursor = 0;
     int bit_cursor = 0;
 
-    for (byte_cursor = 0; byte_cursor < BLOCK_SZ; 
+    for (byte_cursor = 0; byte_cursor < BLK_SZ; 
          byte_cursor+=4)
     {
         for (bit_cursor = 0; bit_cursor < 8; bit_cursor++) {

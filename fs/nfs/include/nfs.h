@@ -15,11 +15,11 @@
 
 #define NFS_MAGIC      0x6969            /* TODO: Define by yourself */
 #define NFS_DEFAULT_PERM    0777   /* 全权限打开 */
-#define BLOCK_SZ  1024
+#define BLK_SZ  1024
 #define IO_SZ	  512
-#define DATABLOCK_PER_INODE 6
+#define BLK_INODE 6
 #include "types.h"
-//extern const int DATABLOCK_PER_INODE;
+//extern const int BLK_INODE;
 /******************************************************************************
 * SECTION: nfs.c
 *******************************************************************************/

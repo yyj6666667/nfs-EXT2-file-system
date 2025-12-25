@@ -52,3 +52,13 @@ debug log:
 * new bug by gdb: nfs_read's restore_inode will replace inode already exists!!
 * remove_dentry add more duty: not only release link relation, also free dentry and its pointing inode space
 * add func "rm -r" and "rm"
+---
+12.25
+* today meet "ls : IO error", which is returned by glibc, can't offer any useful infomation. yet, in the fuse user side , we track the print infomation of ext2 user mode
+* when encounter with situation above, the most efficient way to debug is to carefully watch the whole launch process and checking the change of all the variables
+* like for problem below , we find that the added nfs_inode->pointer is not recovered from disk, cause in version before it's not needed.
+* 一个教训， 开始几个变量设置好， 后续的传递一定要尽可能的产生依赖， 高内聚！ 低耦合， 说的就是这个
+* 后面可以把两个分支合并了
+* no doubt that func "restore()" and "rebuilt_by_inode" is the worst code i've ever writte
+* 重构了restore_inode, 减少了堆溢出风险。
+* reconstruct the whole code to support data_bitmap func, not totally debug yet

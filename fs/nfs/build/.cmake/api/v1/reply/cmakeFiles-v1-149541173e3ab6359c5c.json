@@ -99,8 +99,8 @@
 	"kind" : "cmakeFiles",
 	"paths" : 
 	{
-		"build" : "/home/benjamin/home-lab/fs-tem/fs/nfs/build",
-		"source" : "/home/benjamin/home-lab/fs-tem/fs/nfs"
+		"build" : "/home/benjamin/home-lab/refer/ext2-model/fs/nfs/build",
+		"source" : "/home/benjamin/home-lab/refer/ext2-model/fs/nfs"
 	},
 	"version" : 
 	{
