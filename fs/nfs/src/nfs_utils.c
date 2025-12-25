@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../include/nfs_utils.h"
+#define DEBUG_UTILS
 
 
 //#define UGLY
@@ -11,30 +12,16 @@
 int inode_loc_in_disk(nfs_inode* inode) {
     int offset_bnum = super.super_bnum + super.bitmap_inode_bnum
                     + super.bitmap_data_bnum;
-    int offset_1 = offset_bnum * BLOCK_SZ;
+    int offset_1 = offset_bnum * BLK_SZ;
     int bias = (inode->ino) * sizeof(nfs_inode_d);
     int offset_final = offset_1 + bias;
     return offset_final;
 }
 
-int data_loc_in_disk(int block_id) {
-    return super.data_begin_loc + block_id * BLOCK_SZ;
+int data_loc_in_disk(nfs_inode* inode) {
+    return super.data_begin_loc + inode->ino * BLK_INODE * BLK_SZ;
 }
 
-char* split_path_from_left(char* path) {
-    if(strcmp(path, "/") == 0) {
-        return NULL;
-    }
-    int loc = 0;
-    char* cursor = path + 1; 
-    while(*cursor != '/') {
-        loc++;
-        cursor++;
-    }
-    char* split = (char*) malloc(loc * sizeof(char));
-    memcpy(split, path, loc * sizeof(char));
-    return split;
-}
 
 nfs_dentry* find_child_dentry(nfs_dentry* parent, const char* 
 name) {
@@ -89,8 +76,8 @@ void super_init(struct nfs_super* super,int N, int k, int s, int nfs_magic) {
     start += super->inode_bnum * 1024;
     super->data_loc_d = start;
     super->data_begin_loc = start;
-    super->bitmap_inode = calloc(1, super->bitmap_inode_bnum * BLOCK_SZ);
-    super->bitmap_data  = calloc(1, super->bitmap_data_bnum * BLOCK_SZ);
+    super->bitmap_inode = calloc(1, super->bitmap_inode_bnum * BLK_SZ);
+    super->bitmap_data  = calloc(1, super->bitmap_data_bnum * BLK_SZ);
     return;
 }
 
@@ -255,12 +242,12 @@ void remove_dentry (nfs_inode* inode, nfs_dentry* dentry) {
     char string[100];
     strcpy(string, dentry->name);
     //free
-    free(dentry);
     if (dentry->inode){
         free(dentry->inode);
         if (dentry->inode->data)
             free(dentry->inode->data);
     }
+    free(dentry);
     printf("remove_dentry: ops is done， %s 已经成功释放\n", string);
 }
 
@@ -290,7 +277,7 @@ nfs_inode* alloc_inode(nfs_dentry* dentry) {
         new->dentry_self = dentry;
         new->dentry_sons = NULL;
         new->child_count = 0;
-        new->data = (uint8_t*) calloc(1, DATABLOCK_PER_INODE * BLOCK_SZ);
+        new->data = (uint8_t*) calloc(1, BLK_INODE * BLK_SZ);
         return new;
     } else {
         DBG("没有空闲inode，分配失败");
@@ -326,23 +313,33 @@ void sync_inode_to_disk(nfs_inode *inode) {
         return;
     }
 
-    nfs_inode_d* buf_tem = (nfs_inode_d*) calloc(1, sizeof(nfs_inode_d));
-    buf_tem->size = inode->size;
-    buf_tem->ino  = inode->ino;
-    buf_tem->child_count = inode->child_count;
-    for (int i = inode->ino * DATABLOCK_PER_INODE, j = 0; 
-        j < DATABLOCK_PER_INODE; j++, i++) {
-            *(buf_tem->direct_data + j) = i;
+    nfs_inode_d* inode_buf = (nfs_inode_d*) calloc(1, sizeof(nfs_inode_d));
+    inode_buf->size = inode->size;
+    inode_buf->ino  = inode->ino;
+    inode_buf->child_count = inode->child_count;
+    for (int i = inode->ino * BLK_INODE, j = 0; 
+        j < BLK_INODE; j++, i++) {
+            *(inode_buf->direct_data + j) = i;
         }
     int loc_in_disk = inode_loc_in_disk(inode);
     //写inode
-    casual_write(loc_in_disk, (char*)buf_tem, sizeof(nfs_inode_d));
+    casual_write(loc_in_disk, (char*)inode_buf, sizeof(nfs_inode_d));
     //写数据
-    int data_blk_id = (buf_tem->direct_data)[0];
-    int data_loc_disk = data_loc_in_disk(data_blk_id);
+    int data_loc_disk = data_loc_in_disk(inode);
     printf("把数据写到地址: %d \n", data_loc_disk);
-    casual_write(data_loc_disk, (char*)inode->data, BLOCK_SZ * DATABLOCK_PER_INODE);   
-    free(buf_tem);
+    #ifdef DEBUG_UTILS
+        nfs_dentry_d* check_0 = (nfs_dentry_d*) inode->data;
+        if (check_0->ftype == DIR) ;
+    #endif
+    casual_write(data_loc_disk, inode->data, BLK_SZ * BLK_INODE);   
+
+    #ifdef DEBUG_UTILS
+        nfs_dentry_d* check_1 = NULL;
+        char* temp_1 = (char*) calloc(1, BLK_SZ * BLK_INODE);
+        casual_read(data_loc_disk, temp_1, BLK_SZ * BLK_INODE);
+        check_1 = (nfs_dentry_d*) temp_1;
+    #endif
+    free(inode_buf);
 
     //好了，既然本体已经写入，那么开始愉快的递归吧, 我发现有的递归逻辑写在前面，有的写在后面
     FILE_TYPE type = inode->dentry_self->ftype;
@@ -370,8 +367,8 @@ void sync_bitmap_to_disk(nfs_inode* inode) {
     // 为了可读性和代码容易写，牺牲性能了
     if (inode->data != NULL) {
         int loc = super.bitmap_data_loc_d ;
-        int start_bits = inode->ino * DATABLOCK_PER_INODE;
-        for (int i = 0; i < DATABLOCK_PER_INODE; i++) {
+        int start_bits = inode->ino * BLK_INODE;
+        for (int i = 0; i < BLK_INODE; i++) {
             int cur_loc = loc + (start_bits + i) / 8;
             char tem;
             casual_read(cur_loc, &tem, 1);
@@ -382,11 +379,10 @@ void sync_bitmap_to_disk(nfs_inode* inode) {
         }
     }
     #else
-    super.bitmap_data[0] = 0b11101110;
-    if(casual_write(super.bitmap_inode_loc_d, (char*)(super.bitmap_inode), super.bitmap_inode_bnum * BLOCK_SZ) != 0) {
+    if(casual_write(super.bitmap_inode_loc_d, (char*)(super.bitmap_inode), super.bitmap_inode_bnum * BLK_SZ) != 0) {
         DBG("随机写错误");
     }
-    if(casual_write(super.bitmap_data_loc_d, (char*)(super.bitmap_data), super.bitmap_data_bnum * BLOCK_SZ) != 0) {
+    if(casual_write(super.bitmap_data_loc_d, (char*)(super.bitmap_data), super.bitmap_data_bnum * BLK_SZ) != 0) {
         DBG("随机写错误");
     }
     #endif
@@ -470,11 +466,11 @@ nfs_dentry* general_find (const char* path, boolean* is_found, nfs_dentry* root_
  * @brief 根据ino， 读取disk中的data段到buf， 返回buf指针
  */
 char* read_inode_data_disk(int ino){
-    int loc_d = super.data_loc_d + ino * DATABLOCK_PER_INODE * BLOCK_SZ;
-    char* buf = (char*) calloc(DATABLOCK_PER_INODE, BLOCK_SZ);
+    int loc_d = super.data_loc_d + ino * BLK_INODE * BLK_SZ;
+    char* buf = (char*) calloc(BLK_INODE, BLK_SZ);
 
     ddriver_seek(super.fd, loc_d, 0);
-    int read_times = DATABLOCK_PER_INODE * BLOCK_SZ / IO_SZ;
+    int read_times = BLK_INODE * BLK_SZ / IO_SZ;
     for (int i = 0; i < read_times; i++)
         ddriver_read(super.fd, buf + i * IO_SZ, IO_SZ);
     return buf;
@@ -526,8 +522,8 @@ int rebuilt_by_inode(nfs_inode* inode, nfs_super* super){
 
 int total_rebuilt_from_disk(nfs_super* super, nfs_super* super_disk, nfs_inode* root_inode) {
     //read 2 bitmap, 这个会把inode_size之外的碎片0也读进来
-    casual_read(super->bitmap_inode_loc_d, (char*)(super->bitmap_inode), super->bitmap_inode_bnum * BLOCK_SZ);
-    casual_read(super->bitmap_data_loc_d, (char*)(super->bitmap_data), super->bitmap_data_bnum * BLOCK_SZ);
+    casual_read(super->bitmap_inode_loc_d, (char*)(super->bitmap_inode), super->bitmap_inode_bnum * BLK_SZ);
+    casual_read(super->bitmap_data_loc_d, (char*)(super->bitmap_data), super->bitmap_data_bnum * BLK_SZ);
     //read all dentry, construct trees in ram
     rebuilt_by_inode(root_inode, super);
     super->is_mounted = 1;
@@ -545,9 +541,9 @@ nfs_inode* restore_inode(nfs_dentry* dentry, int ino) {
     casual_read(loc, (char*)&inode_d, sizeof(nfs_inode_d));
     inode->size = inode_d.size;
     inode->child_count = inode_d.child_count;
-    inode->data = (uint8_t*) calloc(1, DATABLOCK_PER_INODE * BLOCK_SZ);
+    inode->data = (uint8_t*) calloc(1, BLK_INODE * BLK_SZ);
     char* disk_data = read_inode_data_disk(ino);
-    memcpy(inode->data, disk_data, DATABLOCK_PER_INODE * BLOCK_SZ);
+    memcpy(inode->data, disk_data, BLK_INODE * BLK_SZ);
     free(disk_data);
     return inode;
 }

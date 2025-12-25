@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #define MAX_NAME_LEN    128     
-//extern const int DATABLOCK_PER_INODE;
+//extern const int BLK_INODE;
 
 typedef enum {
     REG,
@@ -83,7 +83,7 @@ typedef struct {
     int ino;
     int size;//file's byte size
     int child_count;
-    int direct_data[DATABLOCK_PER_INODE];//块号
+    int direct_data[BLK_INODE];//块号
 }nfs_inode_d;
 
 

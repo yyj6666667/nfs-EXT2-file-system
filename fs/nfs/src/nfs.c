@@ -1,4 +1,5 @@
 	#define _XOPEN_SOURCE 700
+	#define DEBUG
 
 	#include "nfs.h"
 	#include "nfs_utils.h"
@@ -7,8 +8,8 @@
 	* SECTION: 宏定义
 	*******************************************************************************/
 	#define OPTION(t, p)        { t, offsetof(struct custom_options, p), 1 }
-	#define BLOCK_SZ  1024
-	//const int DATABLOCK_PER_INODE  = 6;  /* 每个inode指向的数据块个数 */
+	#define BLK_SZ  1024
+	//const int BLK_INODE  = 6;  /* 每个inode指向的数据块个数 */
 	/******************************************************************************
 	* SECTION: 全局变量
 	*******************************************************************************/
@@ -92,7 +93,7 @@
 		super.fd = ddriver_open(nfs_options.device);
 		printf("super.fd is %d\n", super.fd);
 		super.sz_io = 512;
-		super.sz_blk = BLOCK_SZ;
+		super.sz_blk = BLK_SZ;
 		is_init = -1;
 
 		root_dentry = new_dentry("/", DIR);
@@ -118,7 +119,7 @@
 			case 1 : {
 				int disk_size;
 				ddriver_ioctl(super.fd, IOC_REQ_DEVICE_SIZE, &disk_size);
-				super_init(&super, disk_size / 1024, DATABLOCK_PER_INODE, sizeof(struct nfs_inode), NFS_MAGIC);
+				super_init(&super, disk_size / 1024, BLK_INODE, sizeof(struct nfs_inode), NFS_MAGIC);
 			//alloc root inode and dentry
 				//哈哈， 实际上这里的变量root_dentry是一个引子变量
 				root_inode = alloc_inode(root_dentry);
@@ -137,9 +138,9 @@
 				//实现inode,dentry树结构 在ram的重建
 				int fd_bak = super.fd;
 				memcpy(&super, &super_disk, sizeof(nfs_super));
-				super.bitmap_inode = calloc(1, super.bitmap_inode_bnum * BLOCK_SZ);
+				super.bitmap_inode = calloc(1, super.bitmap_inode_bnum * BLK_SZ);
 				super.fd = fd_bak;
-				super.bitmap_data  = calloc(1, super.bitmap_data_bnum * BLOCK_SZ);
+				super.bitmap_data  = calloc(1, super.bitmap_data_bnum * BLK_SZ);
 				root_inode = restore_inode(root_dentry, 0);
 				if(total_rebuilt_from_disk(&super, &super_disk, root_inode) != 0) {
 					DBG("rebuilt 失败");
@@ -160,10 +161,11 @@
 		} else {
 			printf("\n first load\n");
 		}
-		printf("super_blk = %d, bitmap_blk = %d, bitmap_blk2 = %d, inode_blk = %d, data_blk = %d",
+		printf("super_blk = %d, bitmap_inode_blk = %d, bitmap_data_blk = %d, inode_number = %d, inode_blk = %d, data_blk = %d",
 						1,
 						super.bitmap_inode_bnum,
 						super.bitmap_data_bnum,
+						super.inode_num,
 						super.inode_bnum,
 						super.data_bnum);
 		printf("\n--------------------------------------------------------------------------------\n\n");
@@ -181,6 +183,16 @@
 		//oper for safe: last sync
 		super.is_mounted = 0;
 		sync_inode_to_disk(root_inode); 
+		#ifdef DEBUG
+			nfs_dentry_d *check_0_0 = NULL, *check_0_1 = NULL;
+			char*   	  temp_0_0  = (char*) calloc(1, sizeof(nfs_dentry_d));
+			char*   	  temp_0_1  = (char*) calloc(1, sizeof(nfs_dentry_d));
+			casual_read(super.data_loc_d, temp_0_0, sizeof(nfs_dentry_d));
+			casual_read(super.data_loc_d, temp_0_1, BLK_INODE * BLK_SZ);
+			check_0_0 = (nfs_dentry_d*) temp_0_0;
+			check_0_1 = (nfs_dentry_d*) temp_0_1;
+			printf("debug 穿插的第一个信息点\n");
+		#endif
 		sync_bitmap_to_disk(NULL);
 		sync_super_to_disk();
 		//debug: 检测是否真的写进去了
@@ -188,7 +200,24 @@
 		casual_read(0, (char*)tem, sizeof(nfs_super));
 
 		nfs_dump_bitmap();
-
+		#ifdef DEBUG
+			//尝试检查内存：
+			boolean is_found = 0;
+			nfs_dentry* check = general_find("/s0", &is_found, root_dentry);
+			if (is_found == 0) {
+				printf("not found \n");
+			}
+			nfs_dentry_d* check_root_inode_data_ram = NULL;
+			check_root_inode_data_ram = (nfs_dentry_d*) root_dentry->inode->data;
+			//以下代码发现first load 最后同步到磁盘到的内容不对
+			
+			nfs_dentry_d* check_2 = NULL;
+			char*   	  temp  = (char*) calloc(1, sizeof(nfs_dentry_d));
+			casual_read(super.data_loc_d, temp, sizeof(nfs_dentry_d));
+			check_2 = (nfs_dentry_d*) temp;
+			printf("end: sync inode 写入的dir在这里\n");
+			
+		#endif
 
 		free_inode_recursively_ram(root_dentry);
 		ddriver_close(super.fd);
@@ -221,13 +250,19 @@
 			strcpy(new_null->name, fname);
 			alloc_inode(new_null);
 			char *target = parent->data + (parent->child_count - 1) * sizeof(nfs_dentry_d);
-			nfs_dentry_d dentry_d;
-			strcpy(dentry_d.name, new_null->name); 
-			dentry_d.ino = new_null->ino;
-			dentry_d.ftype = new_null->ftype; 				 // 其实这里可以换成ram_and_disk_trans
-			memcpy(target, &dentry_d, sizeof(nfs_dentry_d)); //这里连续着储存，其实有点危险
+			nfs_dentry_d* dentry_d = (nfs_dentry_d*) calloc(1, sizeof(nfs_dentry_d));
+			strcpy(dentry_d->name, new_null->name); 
+			dentry_d->ino = new_null->ino;
+			dentry_d->ftype = new_null->ftype; 				 // 其实这里可以换成ram_and_disk_trans
+			memcpy(target, dentry_d, sizeof(nfs_dentry_d)); //这里连续着储存，其实有点危险
 			parent->size += sizeof(nfs_dentry_d);
-			//不知道够不够
+
+			#ifdef DEBUG
+			nfs_dentry_d* check_2 = (nfs_dentry_d*) parent->data;
+			sync_inode_to_disk(root_inode);
+			#endif
+			
+			free(dentry_d);
 		}
 		return 0;
 	}
@@ -270,11 +305,11 @@
 		nfs_stat->st_gid 	 = getgid();
 		nfs_stat->st_atime   = time(NULL);
 		nfs_stat->st_mtime   = time(NULL);
-		nfs_stat->st_blksize = BLOCK_SZ;
+		nfs_stat->st_blksize = BLK_SZ;
 
 		if (is_root) {
 			nfs_stat->st_size	= 0; //烦死了， 这个是已经使用的空间大小， 我又没有维护，要不先写0吧
-			nfs_stat->st_blocks = super.disk_size / BLOCK_SZ;
+			nfs_stat->st_blocks = super.disk_size / BLK_SZ;
 			nfs_stat->st_nlink  = 2;		/* !特殊，根目录link数为2 */
 		}
 		return 0;
@@ -344,12 +379,14 @@
 
 					//更新parent data
 					char* p_data = parent->data + (parent->child_count - 1) * sizeof(nfs_dentry_d);
-					nfs_dentry_d dentry_d;
-					strcpy(dentry_d.name, target->name);
-					dentry_d.ino  = target->ino;
-					dentry_d.ftype = target->ftype;
-					memcpy(p_data, &dentry_d, sizeof(nfs_dentry_d));
+					nfs_dentry_d* dentry_d = (nfs_dentry_d*) calloc(1, sizeof(nfs_dentry_d));
+					strcpy(dentry_d->name, target->name);
+					dentry_d->ino  = target->ino;
+					dentry_d->ftype = target->ftype;
+					memcpy(p_data, dentry_d, sizeof(nfs_dentry_d));
 					parent->size += sizeof(nfs_dentry_d);
+
+					free(dentry_d);
 					break;
 				}
 				case __S_IFDIR: {
@@ -452,7 +489,7 @@
 			return -EISDIR;
 		}
 
-		if (offset + size <= DATABLOCK_PER_INODE * BLOCK_SZ) {
+		if (offset + size <= BLK_INODE * BLK_SZ) {
 			//reg data在之前的实现中， 是懒加载
 			//可以从磁盘当中读， nfs_write保证了立刻写入磁盘
 			nfs_inode* reg_inode = found->inode;
