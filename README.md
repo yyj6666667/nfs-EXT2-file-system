@@ -45,6 +45,7 @@ debug log:
 * 成功实现remount后ls功能正常， 之前的错误就是因为inode管理下的dentry没有真正写入inode所属的data区， 后者才是在sync时真正被写入磁盘的信息！
 * 现在还有的问题： 其实我的这个data bitmap是虚设，因为目前的实现采用预先计算的线性映射分配数据区空间， 每个inode对应的data段是连续分配的，如果利用data bitmap， 将inode.direct_data 改成指针数组， 就可以实现空闲块驱动的数据块布局现在代码耦合程度太高，可以后面再想办法改
 * 准备实现附加功能
+* 二级指针传递错误， 错过多少次了
 * 忘记添加钩子函数, fuse调用 -> 调用自己实现的函数 
 * 这个图方便理解我们在干什么：
 ![alt text](image-1.png)
@@ -56,8 +57,8 @@ debug log:
 ---
 12.25
 * today meet "ls : IO error", which is returned by glibc, can't offer any useful infomation. yet, in the fuse user side , we track the print infomation of ext2 user mode
-* when encounter with situation above, the most efficient way to debug is to carefully watch the whole launch process and checking the change of all the variables
-* like for problem below , we find that the added nfs_inode->pointer is not recovered from disk, cause in version before it's not needed.
+* when encounter with situation above, the most efficient way to debug is to carefully watch the whole launch process and change of all the variables
+* for problem below , we find that the added nfs_inode->pointer is not recovered from disk, because in former version it's not needed.
 * 一个教训， 开始几个变量设置好， 后续的传递一定要尽可能的产生依赖， 高内聚！ 低耦合， 说的就是这个
 * 后面可以把两个分支合并了
 * no doubt that func "restore()" and "rebuilt_by_inode" is the worst code i've ever writte
