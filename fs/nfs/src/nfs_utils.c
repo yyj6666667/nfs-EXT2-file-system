@@ -246,7 +246,7 @@ void remove_dentry (nfs_inode* inode, nfs_dentry* dentry) {
     //one dentry refers to an inode, so inode bitmap change:
     int cursor = dentry->ino;
     int byte   = cursor / 8;
-    uint8_t mask = 0b1 << (7 - cursor % 8);
+    uint8_t mask = 0b1 << (cursor % 8);
     uint8_t origin  = super.bitmap_inode[byte];
     if ((mask & origin) == 0) {
         DBG("remove_dentry: 原始map inode有错\n");
@@ -273,7 +273,7 @@ nfs_inode* alloc_inode(nfs_dentry* dentry) {
     int     ino_cursor = -1;
     for (int i = 0; i < super.inode_num; i++) {
         int byte_num = i / 8;
-        uint8_t mask = 0b1 << (7 - i % 8);
+        uint8_t mask = 0b1 << (i % 8);
         uint8_t tem  = (super.bitmap_inode)[byte_num];
         if ((tem & mask) == 0) {
             tem |= mask;
@@ -341,7 +341,7 @@ int write_inode_data_disk(nfs_inode* inode) {
                 continue;
             }
             for (int bit = 0; bit < 8; bit++) {
-                uint8_t mask = 0b1 << (7 - bit % 8);
+                uint8_t mask = 0b1 << (bit % 8);
                 if ((mask & super.bitmap_data[byte]) == 0) {
                     //this bit is empty
                     blk_need--;
@@ -403,7 +403,7 @@ void sync_bitmap_to_disk(nfs_inode* inode) {
     char tem;
     casual_read(loc, &tem, 1);
     int resuial = inode->ino % 8;
-    uint8_t mask = 0b1 << (7 - resuial);
+    uint8_t mask = 0b1 << (resuial);
     uint8_t to_be_write = (uint8_t)tem | mask;
     casual_write(loc, (char*)(&to_be_write), 1);
 
@@ -417,7 +417,7 @@ void sync_bitmap_to_disk(nfs_inode* inode) {
             char tem;
             casual_read(cur_loc, &tem, 1);
             int resuial = (start_bits + i) % 8;
-            uint8_t mask = 0b1 << (7 - resuial);
+            uint8_t mask = 0b1 << (resuial);
             tem |= mask;
             casual_write(cur_loc, &tem, 1);
         }
@@ -598,6 +598,8 @@ nfs_inode* restore_inode(nfs_dentry* dentry) {
             dentry_to_add->inode  = NULL; // 这么写是为了更好的可读性, 写代码就是为了完备,规整的代码有利于扩大脑海中的cache， 让注意力放到更重要的结构上
 
             inode->dentry_sons = dentry_to_add;
+
+            iter++;
         }
     }
 

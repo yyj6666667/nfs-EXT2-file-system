@@ -51,6 +51,7 @@ debug log:
 
 * new bug by gdb: nfs_read's restore_inode will replace inode already exists!!
 * remove_dentry add more duty: not only release link relation, also free dentry and its pointing inode space
+* 哈哈，little end 
 * add func "rm -r" and "rm"
 ---
 12.25
@@ -64,3 +65,6 @@ debug log:
 * reconstruct the whole code to support data_bitmap func, not totally debug yet
 * remount data "ii" because reading loc is wrong, 对应的bug是inode trans to inode_d 时pointer复制的逻辑沿用了旧逻辑
 * maybe last problem , 重建期， 第一个rebuilt的inode需要赋给全局变量
+---
+12.26
+* 优化完成， 撒花
