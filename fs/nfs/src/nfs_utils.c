@@ -372,10 +372,9 @@ void sync_inode_to_disk(nfs_inode *inode) {
     buf_tem->size = inode->size;
     buf_tem->ino  = inode->ino;
     buf_tem->child_count = inode->child_count;
-    for (int i = inode->ino * BLK_INODE, j = 0; 
-        j < BLK_INODE; j++, i++) {
-            *(buf_tem->pointer + j) = i;
-        }
+    for (int i = 0; i < BLK_INODE; i++) {
+        buf_tem->pointer[i] = inode->pointer[i];
+    }
     int loc_in_disk = inode_loc_in_disk(inode);
     //写inode
     casual_write(loc_in_disk, (char*)buf_tem, sizeof(nfs_inode_d));
@@ -513,8 +512,11 @@ nfs_dentry* general_find (const char* path, boolean* is_found, nfs_dentry* root_
  * @brief 根据ino， 读取disk中的data段到buf， 返回buf指针
  */
 char* read_inode_data_disk(nfs_inode* inode){
+    if (inode == NULL) {
+        return NULL;
+    }
     if (inode->size == 0) {
-        return 0;
+        return NULL;
     }
     char* buf = (char*) calloc(BLK_INODE, BLK_SZ);
 
@@ -529,8 +531,9 @@ char* read_inode_data_disk(nfs_inode* inode){
 /**
  * @brief recursively call restore_inode to build the whole tree structure in ram
  * @param dentry : parent dentry, expect it to already have dentry_sons(if possible), self->data(if possible) and basic info like ino
+ * @details return inode not number 不是很好的实践， 但是上层调用root_inode需要赋值， 只有妥协
  */
-int rebuilt_relation(nfs_dentry* dentry){
+nfs_inode*  rebuilt_relation(nfs_dentry* dentry){
     switch(dentry->ftype) {
         case DIR : {
             nfs_inode* inode = restore_inode(dentry);
@@ -540,17 +543,19 @@ int rebuilt_relation(nfs_dentry* dentry){
                 rebuilt_relation(iter);
                 iter = iter->brother;
             }
+            return inode;
             break;
         }
         case REG : {
             //我想实现懒汉式加载， 所以在重建期就不读数据到ram了
+            restore_inode(dentry);
             break;
         }
         case SYM_LINK : {
             break;
         }
     }
-    return 0;
+    return NULL;
 }
 /**
  * @brief simply bitmap read + inode recover recursively
@@ -560,7 +565,7 @@ int total_rebuilt_from_disk(nfs_super* super, nfs_super* super_disk, nfs_dentry*
     casual_read(super->bitmap_inode_loc_d, (char*)(super->bitmap_inode), super->bitmap_inode_bnum * BLK_SZ);
     casual_read(super->bitmap_data_loc_d, (char*)(super->bitmap_data), super->bitmap_data_bnum * BLK_SZ);
     //read all dentry, construct trees in ram
-    rebuilt_relation(root_dentry);
+    root_inode = rebuilt_relation(root_dentry);
     super->is_mounted = 1;
     return 0;
 }

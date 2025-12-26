@@ -1,4 +1,5 @@
 	#define _XOPEN_SOURCE 700
+    #define DEBUG_NFS
 
 	#include "nfs.h"
 	#include "nfs_utils.h"
@@ -183,8 +184,16 @@
 		sync_bitmap_to_disk(NULL);
 		sync_super_to_disk();
 		//debug: 检测是否真的写进去了
-		nfs_super* tem = calloc(1, sizeof(nfs_super));
-		casual_read(0, (char*)tem, sizeof(nfs_super));
+		
+		#ifdef DEBUG_NFS
+		//checked , right
+		char* tem_0 = read_inode_data_disk(root_inode);
+		nfs_dentry_d* check_0 = (nfs_dentry_d*) tem_0;
+		//checking
+		nfs_inode_d inode_d;
+		int loc = inode_loc_in_disk(root_inode);
+		casual_read(loc, (char*)&inode_d, sizeof(nfs_inode_d));
+		#endif
 
 		nfs_dump_bitmap();
 

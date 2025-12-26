@@ -62,3 +62,5 @@ debug log:
 * no doubt that func "restore()" and "rebuilt_by_inode" is the worst code i've ever writte
 * 重构了restore_inode, 减少了堆溢出风险。
 * reconstruct the whole code to support data_bitmap func, not totally debug yet
+* remount data "ii" because reading loc is wrong, 对应的bug是inode trans to inode_d 时pointer复制的逻辑沿用了旧逻辑
+* maybe last problem , 重建期， 第一个rebuilt的inode需要赋给全局变量
