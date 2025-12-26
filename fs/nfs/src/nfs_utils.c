@@ -350,6 +350,7 @@ int write_inode_data_disk(nfs_inode* inode) {
                     inode->pointer[pointer_idx] = data_loc;
                     pointer_idx += 1;
                     casual_write(data_loc, data_cursor, BLK_SZ);
+                    printf("\tino: %d, 写到地址: %d", inode->ino, data_loc);
                     data_cursor += BLK_SZ;
                     if (blk_need == 0) {
                         printf("写完了\n");
@@ -367,7 +368,11 @@ void sync_inode_to_disk(nfs_inode *inode) {
     if (inode == NULL) {
         return;
     }
-
+    //写数据, 同时写inode本体的pointer, 高耦合，哈哈， 糟糕的实践
+    if (write_inode_data_disk(inode) != 0) {
+        DBG("sync: write data failed\n");
+        return;
+    }
     nfs_inode_d* buf_tem = (nfs_inode_d*) calloc(1, sizeof(nfs_inode_d));
     buf_tem->size = inode->size;
     buf_tem->ino  = inode->ino;
@@ -378,13 +383,6 @@ void sync_inode_to_disk(nfs_inode *inode) {
     int loc_in_disk = inode_loc_in_disk(inode);
     //写inode
     casual_write(loc_in_disk, (char*)buf_tem, sizeof(nfs_inode_d));
-    //写数据
-    int data_blk_id = (buf_tem->pointer)[0];
-    int data_loc_disk = data_loc_in_disk(data_blk_id);
-    printf("把数据写到地址: %d \n", data_loc_disk);
-    if (write_inode_data_disk(inode) != 0) {
-        DBG("sync: write data failed\n");
-    }
     free(buf_tem);
 
     //好了，既然本体已经写入，那么开始愉快的递归吧, 我发现有的递归逻辑写在前面，有的写在后面
@@ -548,7 +546,7 @@ nfs_inode*  rebuilt_relation(nfs_dentry* dentry){
         }
         case REG : {
             //我想实现懒汉式加载， 所以在重建期就不读数据到ram了
-            restore_inode(dentry);
+            //restore_inode(dentry);
             break;
         }
         case SYM_LINK : {
@@ -560,12 +558,12 @@ nfs_inode*  rebuilt_relation(nfs_dentry* dentry){
 /**
  * @brief simply bitmap read + inode recover recursively
  */
-int total_rebuilt_from_disk(nfs_super* super, nfs_super* super_disk, nfs_dentry* root_dentry, nfs_inode* root_inode) {
+int total_rebuilt_from_disk(nfs_super* super, nfs_super* super_disk, nfs_dentry* root_dentry, nfs_inode** root_inode) {
     //read 2 bitmap, 这个会把inode_size之外的碎片0也读进来
     casual_read(super->bitmap_inode_loc_d, (char*)(super->bitmap_inode), super->bitmap_inode_bnum * BLK_SZ);
     casual_read(super->bitmap_data_loc_d, (char*)(super->bitmap_data), super->bitmap_data_bnum * BLK_SZ);
     //read all dentry, construct trees in ram
-    root_inode = rebuilt_relation(root_dentry);
+    *root_inode = rebuilt_relation(root_dentry);
     super->is_mounted = 1;
     return 0;
 }
@@ -595,7 +593,7 @@ nfs_inode* restore_inode(nfs_dentry* dentry) {
         nfs_dentry_d* iter = (nfs_dentry_d*) data;
         for (int i = 0; i < inode->child_count; i++) {
             nfs_dentry* dentry_to_add = new_dentry(iter->name, iter->ino, iter->ftype);
-            dentry_to_add->parent = inode;
+            dentry_to_add->parent = dentry;
             dentry_to_add->brother = inode->dentry_sons;
             dentry_to_add->inode  = NULL; // 这么写是为了更好的可读性, 写代码就是为了完备,规整的代码有利于扩大脑海中的cache， 让注意力放到更重要的结构上
 

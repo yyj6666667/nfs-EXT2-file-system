@@ -141,7 +141,7 @@
 				super.bitmap_inode = calloc(1, super.bitmap_inode_bnum * BLK_SZ);
 				super.fd = fd_bak;
 				super.bitmap_data  = calloc(1, super.bitmap_data_bnum * BLK_SZ);
-				if(total_rebuilt_from_disk(&super, &super_disk, root_dentry, root_inode) != 0) {
+				if(total_rebuilt_from_disk(&super, &super_disk, root_dentry, &root_inode) != 0) {
 					DBG("rebuilt 失败");
 					return NULL;
 				}
